@@ -1,7 +1,43 @@
 from django.db import models
 
 # Create your models here.
+class Skill(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+
+    def __str__(self):
+        return self.name
+
+class Certificate(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    image = models.URLField(null=True, blank=True)
+    def __str__(self):
+        return self.name
+    
+class Achievement(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    image = models.URLField(null=True, blank=True)
+    def __str__(self):
+        return self.name
+
 class Participant(models.Model):
+    GENDER_CHOICES = [
+        ('male', 'Мужской'),
+        ('female', 'Женский'),
+    ]
+
+    THEME_CHOICES = [
+        ('dark', 'Темный'),
+        ('light', 'Светлый'),
+    ]
+
+    LANGUAGE_CHOICES = [
+        ('ru', 'Русский'),
+        ('en', 'Английский'),
+    ]
+    
     telegram_id = models.CharField(max_length=255, unique=True)
     username = models.CharField(max_length=32, unique=True, null=True, blank=True)
     first_name = models.CharField(max_length=64, null=True, blank=True)
@@ -20,12 +56,12 @@ class Participant(models.Model):
     city = models.CharField(max_length=255, null=True, blank=True)
     country = models.CharField(max_length=255, null=True, blank=True)
     address = models.CharField(max_length=255, null=True, blank=True)
-    avatar = models.URLField(null=True, blank=True) # Еркебулан потом надо изменить на ImageField
+    avatar = models.URLField(null=True, blank=True) # TODO: Еркебулан потом надо изменить на ImageField
     bio = models.CharField(null=True, blank=True, max_length=60)
     is_verified = models.BooleanField(default=False)
     achievements = models.ManyToManyField(Achievement, blank=True)
-    hackathons = models.ManyToManyField(Hackathon, blank=True)
-    friends = models.ManyToManyField('self', blank=True) # Еркебулан потом надо посмотреть, как сделать друзей
+    hackathons = models.ManyToManyField('events.Hackathon', blank=True, related_name='participant_list')
+    friends = models.ManyToManyField('self', blank=True) # TODO: Еркебулан потом надо посмотреть, как сделать друзей
     theme = models.CharField(max_length=10, choices=THEME_CHOICES, null=True, blank=True)
     language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, null=True, blank=True)
 
@@ -33,20 +69,7 @@ class Participant(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    GENDER_CHOICES = [
-        ('male', 'Мужской'),
-        ('female', 'Женский'),
-    ]
 
-    THEME_CHOICES = [
-        ('dark', 'Темный'),
-        ('light', 'Светлый'),
-    ]
-
-    LANGUAGE_CHOICES = [
-        ('ru', 'Русский'),
-        ('en', 'Английский'),
-    ]
 
     # Функции для подсчета уровня
     def calculate_level(self):
@@ -81,25 +104,3 @@ class Participant(models.Model):
     # Функция для вывода имени пользователя
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.telegram_id}"
-
-class Skill(models.Model):
-    name = models.CharField(max_length=255)
-    description = models.TextField()
-
-    def __str__(self):
-        return self.name
-    
-
-class Certificate(models.Model):
-    name = models.CharField(max_length=255)
-    description = models.TextField()
-    image = models.URLField(null=True, blank=True)
-    def __str__(self):
-        return self.name
-    
-class Achievement(models.Model):
-    name = models.CharField(max_length=255)
-    description = models.TextField()
-    image = models.URLField(null=True, blank=True)
-    def __str__(self):
-        return self.name
