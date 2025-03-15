@@ -18,7 +18,14 @@ class AdminUser(models.Model):
     def __str__(self):
         return f"{self.name} ({self.username})"
 
-# Опционально: предыдущие модели, если они есть
+class AdminConfig(models.Model):
+    key = models.CharField(max_length=100, unique=True)
+    value = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.key}: {self.value}"
+    
 class AdminAction(models.Model):
     ACTION_TYPES = [
         ('create_hackathon', 'Create Hackathon'),
@@ -28,6 +35,7 @@ class AdminAction(models.Model):
         ('unban_user', 'Unban User'),
         ('change_role', 'Change Role'),
         ('moderate_news', 'Moderate News'),
+        ('register_hackathon', 'Register on Hackathon'),  # Новый тип
     ]
 
     user = models.ForeignKey('users.Participant', on_delete=models.CASCADE, related_name='admin_actions')
@@ -38,11 +46,3 @@ class AdminAction(models.Model):
 
     def __str__(self):
         return f"{self.user.telegram_id} - {self.action_type} at {self.timestamp}"
-
-class AdminConfig(models.Model):
-    key = models.CharField(max_length=100, unique=True)
-    value = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-
-    def __str__(self):
-        return f"{self.key}: {self.value}"

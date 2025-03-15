@@ -178,5 +178,6 @@ LOGGING = {
 }
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+JWT_SECRET = os.getenv('JWT_SECRET')
 
 AUTH_USER_MODEL = 'users.Participant'

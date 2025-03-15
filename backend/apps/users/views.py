@@ -15,7 +15,7 @@ from .serializers import ParticipantUpdateSerializer
 def verify_telegram_data(data):
     received_hash = data.pop('hash', None)
     data_check_string = '\n'.join([f'{k}={v}' for k, v in sorted(data.items())])
-    secret_key = hashlib.sha256(settings.TELEGRAM_BOT_TOKEN.encode()).digest()
+    secret_key = hashlib.sha256(settings.JWT_SECRET.encode()).digest()
     calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
     return calculated_hash == received_hash
 
