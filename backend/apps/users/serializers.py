@@ -15,5 +15,5 @@ class ParticipantUpdateSerializer(serializers.ModelSerializer):
         model = Participant
         fields = [
             'first_name', 'last_name', 'phone_number', 'email', 'gender', 'birth_date',
-            'city', 'country', 'address', 'bio'
+            'city', 'country', 'address', 'bio', 'language', 'theme'
         ]

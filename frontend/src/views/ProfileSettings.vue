@@ -32,7 +32,27 @@
         </div>
         <div class="form-group">
           <label>Город:</label>
-          <input v-model="form.city" type="text" placeholder="Введите город" />
+          <select v-model="form.city">
+            <option value="">Не указано</option>
+            <option value="Almaty">Алматы</option>
+            <option value="Nur-Sultan">Нур-Султан</option>
+            <option value="Shymkent">Шымкент</option>
+            <option value="Taraz">Тараз</option>
+            <option value="Aktobe">Актобе</option>
+            <option value="Kyzylorda">Кызылорда</option>
+            <option value="Kostanay">Костанай</option>
+            <option value="Pavlodar">Павлодар</option>
+            <option value="Oral">Орал</option>
+            <option value="Atyrau">Атырау</option>
+            <option value="Zhambyl">Жамбыл</option>
+            <option value="Karagandy">Караганда</option>
+            <option value="Kokshetau">Кокшетау</option>
+            <option value="Mangystau">Мангистау</option>
+            <option value="Petropavl">Петропавловск</option>
+            <option value="Taldykorgan">Талдыкорган</option>
+            <option value="Turkistan">Туркестан</option>
+            <option value="Ust-Kamenogorsk">Усть-Каменогорск</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Страна:</label>
@@ -56,7 +76,7 @@
   <script>
   import { useAuthStore } from '../stores/auth';
   import axios from 'axios';
-  
+
   export default {
     data() {
       return {
@@ -126,6 +146,8 @@
       },
     },
   };
+
+
   </script>
   
   <style scoped>
@@ -200,4 +222,6 @@
     color: #00FF00;
     margin-top: 10px;
   }
+
+ 
   </style>

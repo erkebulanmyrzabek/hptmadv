@@ -66,6 +66,28 @@ class Participant(AbstractUser):
         ('ru', 'Русский'),
         ('en', 'Английский'),
     ]
+
+    CITY_CHOICES = [
+        ('Almaty', 'Алматы'),
+        ('Nur-Sultan', 'Нур-Султан'),
+        ('Shymkent', 'Шымкент'),
+        ('Taraz', 'Тараз'),
+        ('Aktobe', 'Актобе'),
+        ('Kyzylorda', 'Кызылорда'),
+        ('Kostanay', 'Костанай'),
+        ('Pavlodar', 'Павлодар'),
+        ('Oral', 'Орал'),
+        ('Atyrau', 'Атырау'),
+        ('Zhambyl', 'Жамбыл'),
+        ('Karagandy', 'Караганда'),
+        ('Kokshetau', 'Кокшетау'),
+        ('Mangystau', 'Мангистау'),
+        ('Petropavl', 'Петропавловск'),
+        ('Taldykorgan', 'Талдыкорган'),
+        ('Turkistan', 'Туркестан'),
+        ('Ust-Kamenogorsk', 'Усть-Каменогорск'),
+        # TODO дополнить список городов
+    ]
     
     telegram_id = models.CharField(max_length=255, unique=True)
     # username уже есть в AbstractUser, оставляем его
@@ -82,7 +104,7 @@ class Participant(AbstractUser):
     certificates = models.ManyToManyField(Certificate, blank=True)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, null=True, blank=True)
     birth_date = models.DateField(null=True, blank=True)
-    city = models.CharField(max_length=255, null=True, blank=True)
+    city = models.CharField(max_length=255, choices=CITY_CHOICES, null=True, blank=True)
     country = models.CharField(max_length=255, null=True, blank=True)
     address = models.CharField(max_length=255, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
