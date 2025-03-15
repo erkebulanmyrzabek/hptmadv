@@ -1,12 +1,12 @@
 from django.urls import path, include
-from . import views
+from .views import TelegramAuthView, UserViewSet, UserUpdateView
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
-router.register(r'profile', views.UserViewSet, basename='profile')
-
+router.register(r'profile', UserViewSet, basename='user')
 
 urlpatterns = [
-    path('',include(router.urls)),
-    path('telegram-auth/', views.TelegramAuthView.as_view(), name='telegram-auth'),
+    path('telegram-auth/', TelegramAuthView.as_view(), name='telegram-auth'),
+    path('profile/update/', UserUpdateView.as_view(), name='user-update'),
+    path('', include(router.urls)),
 ]

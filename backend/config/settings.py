@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-*c$7npa767u$*h*t7(b%8v!1zgh0h6o@$6ad@0kr6m0r1xzy0t
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     'apps.events.apps.EventsConfig',
     'apps.shop.apps.ShopConfig',
     'apps.community.apps.CommunityConfig',
+    'rest_framework_simplejwt',
+    'admin_panel'
 ]
 
 MIDDLEWARE = [
@@ -78,11 +80,14 @@ TEMPLATES = [
     },
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
 WSGI_APPLICATION = 'config.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
     'default': {
@@ -91,9 +96,6 @@ DATABASES = {
     }
 }
 
-
-# Password validation
-# https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -128,8 +130,12 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
+from decouple import config
+
+# Чтение учетных данных из .env
+ADMIN_CREDENTIALS = config('ADMIN_CREDENTIALS', default='admin:admin123').split(',')
+ADMIN_USERS = {cred.split(':')[0]: cred.split(':')[1] for cred in ADMIN_CREDENTIALS}
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -179,3 +185,5 @@ LOGGING = {
 }
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+
+AUTH_USER_MODEL = 'users.Participant'

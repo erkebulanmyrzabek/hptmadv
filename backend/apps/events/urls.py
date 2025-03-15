@@ -1,6 +1,10 @@
 from django.urls import path, include
-from . import views
+from rest_framework.routers import DefaultRouter
+from .views import HackathonViewSet
+
+router = DefaultRouter()
+router.register(r'hackathons', HackathonViewSet, basename='hackathon')
 
 urlpatterns = [
-    {'somedata': 'somedata'} # TODO: Еркебулан надо добавить urls для events
+    path('', include(router.urls)),  # Маршруты для хакатонов: /api/events/hackathons/
 ]
