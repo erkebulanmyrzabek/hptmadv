@@ -1,5 +1,4 @@
 from django.contrib import admin
-from .models import AdminAction, AdminConfig
+from .models import Organization
 
-admin.site.register(AdminAction)
-admin.site.register(AdminConfig)
+admin.site.register(Organization)

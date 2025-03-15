@@ -24,13 +24,6 @@ class Achievement(models.Model):
 
     def __str__(self):
         return self.name
-    
-class Role(models.Model):
-    name = models.CharField(max_length=50, unique=True)
-    description = models.TextField(blank=True)
-
-    def __str__(self):
-        return self.name
 
 class CustomUserManager(UserManager):
     def create_superuser(self, telegram_id, password, **extra_fields):
@@ -115,7 +108,6 @@ class Participant(AbstractUser):
     friends = models.ManyToManyField('self', blank=True)
     theme = models.CharField(max_length=10, choices=THEME_CHOICES, null=True, blank=True)
     language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, null=True, blank=True)
-    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

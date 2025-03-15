@@ -3,13 +3,17 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from .models import Hackathon
+from .models import Hackathon, HackathonParticipants
 from .serializers import HackathonSerializer
 from apps.community.models import Team
 from django.utils import timezone
 
+
 class HackathonViewSet(ReadOnlyModelViewSet):
-    queryset = Hackathon.objects.all()
+    queryset = Hackathon.objects.prefetch_related(
+        'details', 'schedule', 'location', 'participants_info', 
+        'tags', 'hackathon_prizes', 'participants_info__participants'
+    )
     serializer_class = HackathonSerializer
 
     def get_serializer_context(self):
@@ -17,7 +21,6 @@ class HackathonViewSet(ReadOnlyModelViewSet):
         return {'request': self.request}
 
     def list(self, request, *args, **kwargs):
-        # Переопределяем list, если нужно добавить фильтрацию
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
@@ -36,19 +39,21 @@ class HackathonViewSet(ReadOnlyModelViewSet):
 
         # Проверка времени регистрации
         now = timezone.now()
-        if hackathon.registration_start_date and now < hackathon.registration_start_date:
+        schedule = hackathon.schedule
+        if schedule.registration_start_date and now < schedule.registration_start_date:
             return Response(
                 {'detail': 'Регистрация ещё не началась'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        if hackathon.registration_end_date and now > hackathon.registration_end_date:
+        if schedule.registration_end_date and now > schedule.registration_end_date:
             return Response(
                 {'detail': 'Регистрация уже завершена'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         # Проверка максимального числа участников
-        if hackathon.max_participants and hackathon.participants.count() >= hackathon.max_participants:
+        participants_info = hackathon.participants_info
+        if participants_info.max_participants and participants_info.participants.count() >= participants_info.max_participants:
             return Response(
                 {'detail': 'Достигнуто максимальное число участников'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -56,14 +61,14 @@ class HackathonViewSet(ReadOnlyModelViewSet):
 
         # Проверка, зарегистрирован ли пользователь
         user = request.user
-        if hackathon.participants.filter(id=user.id).exists():
+        if participants_info.participants.filter(id=user.id).exists():
             return Response(
                 {'detail': 'Вы уже зарегистрированы на этот хакатон'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         # Регистрация пользователя
-        hackathon.participants.add(user)
+        participants_info.participants.add(user)
         return Response({'detail': 'Вы успешно зарегистрированы на хакатон'}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
@@ -100,7 +105,7 @@ class HackathonViewSet(ReadOnlyModelViewSet):
             leader=user
         )
         team.members.add(user)
-        hackathon.participants.add(user)  # Добавляем лидера в участники хакатона
+        hackathon.participants_info.participants.add(user)  # Добавляем лидера в участники хакатона
 
         return Response({
             'detail': 'Команда успешно создана',
@@ -156,5 +161,5 @@ class HackathonViewSet(ReadOnlyModelViewSet):
 
         # Присоединение к команде
         team.members.add(user)
-        hackathon.participants.add(user)  # Добавляем участника в хакатон
+        hackathon.participants_info.participants.add(user)  # Добавляем участника в хакатон
         return Response({'detail': 'Вы успешно присоединились к команде'}, status=status.HTTP_200_OK)

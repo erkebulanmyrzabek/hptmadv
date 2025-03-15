@@ -1,7 +1,7 @@
 <template>
   <div class="hackathon-card" :class="{ 'registration': hackathon.status === 'registration' }">
     <div class="card-header">
-      <img :src="hackathon.preview_image || 'https://via.placeholder.com/400x200'" alt="Hackathon Preview" class="preview-image">
+      <img :src="hackathon.details.preview_image" alt="Hackathon Preview" class="preview-image">
       <div class="status-badge" :class="hackathon.status">
         {{ getStatusText(hackathon.status) }} 
         <span class="status-icon">{{ getStatusIcon(hackathon.status) }}</span>
@@ -10,18 +10,18 @@
 
     <div class="card-content">
       <h2 class="title">{{ hackathon.title }}</h2>
-      <p class="description">{{ hackathon.short_description }}</p>
+      <p class="description">{{ hackathon.details.short_description }}</p>
 
       <div class="info-grid">
         <div class="info-item">
           <span class="icon">📅</span>
           <span class="label">Начало:</span>
-          <span class="value">{{ formatDate(hackathon.start_date) }}</span>
+          <span class="value">{{ formatDate(hackathon.schedule.start_date) }}</span>
         </div>
         <div class="info-item">
           <span class="icon">⏳</span>
           <span class="label">Длительность:</span>
-          <span class="value">{{ getDuration(hackathon.start_date, hackathon.end_date) }}</span>
+          <span class="value">{{ getDuration(hackathon.schedule.start_date, hackathon.schedule.end_date) }}</span>
         </div>
         <div class="info-item">
           <span class="icon">🎯</span>
@@ -31,7 +31,7 @@
         <div class="info-item">
           <span class="icon">👥</span>
           <span class="label">Участники:</span>
-          <span class="value">{{ hackathon.participants?.length || 0 }}/{{ hackathon.max_participants || '∞' }}</span>
+          <span class="value">{{ hackathon.participants?.length || 0 }}/{{ hackathon.participants_info.max_participants || '∞' }}</span> 
         </div>
       </div>
 
@@ -41,9 +41,9 @@
         </span>
       </div>
 
-      <div class="prize-pool" v-if="hackathon.total_prize_amount">
+      <div class="prize-pool" v-if="hackathon.hackathon_prizes.length > 0">
         <span class="prize-icon">🏆</span>
-        <span class="prize-amount">{{ hackathon.total_prize_amount }}₸</span>
+        <span class="prize-amount">{{ hackathon.hackathon_prizes.reduce((acc, prize) => acc + prize.prize_amount, 0) }}₸</span>
       </div>
 
       <div class="card-actions">

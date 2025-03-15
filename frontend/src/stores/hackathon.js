@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
+import { useAuthStore } from './auth'; // Импортируем authStore для получения токена
 
 export const useHackathonStore = defineStore('hackathon', {
   state: () => ({
@@ -7,6 +8,7 @@ export const useHackathonStore = defineStore('hackathon', {
     currentHackathon: null,
   }),
   actions: {
+    // Получение списка всех хакатонов
     async fetchHackathons() {
       try {
         const response = await axios.get('http://localhost:8000/api/events/hackathons/');
@@ -16,6 +18,8 @@ export const useHackathonStore = defineStore('hackathon', {
         console.error('Ошибка получения хакатонов:', error.response?.data || error);
       }
     },
+
+    // Получение деталей конкретного хакатона
     async fetchHackathonDetail(id) {
       try {
         const response = await axios.get(`http://localhost:8000/api/events/hackathons/${id}/`);
@@ -25,6 +29,8 @@ export const useHackathonStore = defineStore('hackathon', {
         console.error('Ошибка получения деталей хакатона:', error.response?.data || error);
       }
     },
+
+    // Регистрация на хакатон
     async registerForHackathon(id) {
       try {
         const authStore = useAuthStore();
@@ -33,12 +39,14 @@ export const useHackathonStore = defineStore('hackathon', {
           {},
           { headers: { Authorization: `Bearer ${authStore.token}` } }
         );
-        await this.fetchHackathonDetail(id); // Обновляем статус is_participant
+        await this.fetchHackathonDetail(id); // Обновляем данные хакатона, включая is_participant
         return response.data;
       } catch (error) {
         throw error.response?.data || error;
       }
     },
+
+    // Создание команды для хакатона
     async createTeam(id, teamName) {
       try {
         const authStore = useAuthStore();
@@ -47,12 +55,14 @@ export const useHackathonStore = defineStore('hackathon', {
           { team_name: teamName },
           { headers: { Authorization: `Bearer ${authStore.token}` } }
         );
-        await this.fetchHackathonDetail(id);
+        await this.fetchHackathonDetail(id); // Обновляем данные после создания команды
         return response.data;
       } catch (error) {
         throw error.response?.data || error;
       }
     },
+
+    // Присоединение к команде по коду
     async joinTeam(id, joinCode) {
       try {
         const authStore = useAuthStore();
@@ -61,7 +71,7 @@ export const useHackathonStore = defineStore('hackathon', {
           { join_code: joinCode },
           { headers: { Authorization: `Bearer ${authStore.token}` } }
         );
-        await this.fetchHackathonDetail(id);
+        await this.fetchHackathonDetail(id); // Обновляем данные после присоединения
         return response.data;
       } catch (error) {
         throw error.response?.data || error;
@@ -69,5 +79,3 @@ export const useHackathonStore = defineStore('hackathon', {
     },
   },
 });
-
-import { useAuthStore } from './auth'; // Импортируем authStore для получения токена

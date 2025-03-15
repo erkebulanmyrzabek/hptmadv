@@ -2,7 +2,7 @@
     <div class="hackathon-detail">
       <div v-if="hackathon" class="hackathon-header">
         <img
-          :src="hackathon.banner_image || hackathon.preview_image || 'https://via.placeholder.com/1200x400'"
+          :src="hackathon.details.banner_image || hackathon.details.preview_image"
           alt="Hackathon Banner"
           class="banner-image"
         />
@@ -10,7 +10,7 @@
         <div class="info">
           <span class="status" :class="hackathon.status">{{ hackathon.status }}</span>
           <span class="type">{{ hackathon.type }}</span>
-          <span>Участники: {{ hackathon.participants_count }}/{{ hackathon.max_participants || '∞' }}</span>
+          <span>Участники: {{ hackathon.participants_info.participants_count }}/{{ hackathon.participants_info.max_participants || '∞' }}</span>
         </div>
       </div>
   
@@ -18,15 +18,16 @@
         <!-- Описание -->
         <section class="section">
           <h2>Описание</h2>
-          <p>{{ hackathon.full_description || hackathon.short_description || 'Описание отсутствует' }}</p>
+          <p>{{ hackathon.full_description || hackathon.details.full_description || 'Описание отсутствует' }}</p>
         </section>
   
         <!-- Организатор -->
         <section class="section">
           <h2>Организатор</h2>
           <div class="organization">
-            <img
-              :src="hackathon.organization.logo || 'https://via.placeholder.com/50'"
+
+            <img v-if="hackathon.organization.logo"
+              :src="hackathon.organization.logo"
               alt="Organization Logo"
               class="org-logo"
             />
@@ -45,8 +46,8 @@
         <!-- Даты -->
         <section class="section">
           <h2>Даты</h2>
-          <p><strong>Регистрация:</strong> {{ formatDate(hackathon.registration_start_date) }} - {{ formatDate(hackathon.registration_end_date) }}</p>
-          <p><strong>Хакатон:</strong> {{ formatDate(hackathon.start_date) }} - {{ formatDate(hackathon.end_date) }}</p>
+          <p><strong>Регистрация:</strong> {{ formatDate(hackathon.schedule.registration_start_date) }} - {{ formatDate(hackathon.schedule.registration_end_date) }}</p>
+          <p><strong>Хакатон:</strong> {{ formatDate(hackathon.schedule.start_date) }} - {{ formatDate(hackathon.schedule.end_date) }}</p>
         </section>
   
         <!-- Место -->

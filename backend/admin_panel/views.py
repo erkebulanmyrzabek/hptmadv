@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.db.models import Count, Sum
 from django.http import HttpResponse
 from django.utils import timezone
-from admin_panel.models import AdminUser, AdminAction
+from admin_panel.models import AdminUser
 from apps.users.models import Participant
 from apps.events.models import Hackathon, HackathonPrizePlace
 import csv
@@ -63,21 +63,11 @@ def manage_hackathons(request):
                 start_date=timezone.now() + timedelta(days=8),
                 end_date=timezone.now() + timedelta(days=10),
             )
-            AdminAction.objects.create(
-                user=Participant.objects.first(),  # Нужно заменить на реального пользователя
-                action_type="create_hackathon",
-                target_id=hackathon.id,
-                description=f"Создан хакатон: {title} администратором {admin_user.name}"
-            )
+
         elif 'archive' in request.POST:
             hackathon_id = request.POST['hackathon_id']
             Hackathon.objects.filter(id=hackathon_id).update(status='archived')
-            AdminAction.objects.create(
-                user=Participant.objects.first(),  # Нужно заменить
-                action_type="archive_hackathon",
-                target_id=hackathon_id,
-                description=f"Хакатон {hackathon_id} архивирован администратором {admin_user.name}"
-            )
+
     return render(request, 'admin_panel/manage_hackathons.html', {'hackathons': hackathons})
 
 def manage_users(request):
@@ -91,31 +81,15 @@ def manage_users(request):
         if 'ban' in request.POST:
             user_id = request.POST['user_id']
             Participant.objects.filter(id=user_id).update(is_banned=True)
-            AdminAction.objects.create(
-                user=Participant.objects.first(),  # Нужно заменить
-                action_type="ban_user",
-                target_id=user_id,
-                description=f"Пользователь {user_id} заблокирован администратором {admin_user.name}"
-            )
         elif 'unban' in request.POST:
             user_id = request.POST['user_id']
             Participant.objects.filter(id=user_id).update(is_banned=False)
-            AdminAction.objects.create(
-                user=Participant.objects.first(),  # Нужно заменить
-                action_type="unban_user",
-                target_id=user_id,
-                description=f"Пользователь {user_id} разблокирован администратором {admin_user.name}"
-            )
+
         elif 'role' in request.POST:
             user_id = request.POST['user_id']
             role_id = request.POST['role_id']
             Participant.objects.filter(id=user_id).update(role_id=role_id)
-            AdminAction.objects.create(
-                user=Participant.objects.first(),  # Нужно заменить
-                action_type="change_role",
-                target_id=user_id,
-                description=f"Роль пользователя {user_id} изменена администратором {admin_user.name}"
-            )
+
     return render(request, 'admin_panel/manage_users.html', {'users': users})
 
 def analytics(request):

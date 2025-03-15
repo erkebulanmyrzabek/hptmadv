@@ -3,7 +3,7 @@
     <div v-if="user" class="profile-card">
       <div class="profile-header">
         <img
-          :src="user.avatar || 'https://via.placeholder.com/150'"
+          :src="user.avatar"
           alt="Avatar"
           class="avatar"
         />
