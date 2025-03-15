@@ -82,8 +82,6 @@ class HackathonParticipants(models.Model):
     def __str__(self):
         return f"Участники для {self.hackathon.title}"
     
-
-
 class HackathonPrizePlace(models.Model):
     hackathon = models.ForeignKey(Hackathon, on_delete=models.CASCADE, related_name='hackathon_prizes')
     place = models.IntegerField(help_text="Номер призового места (1, 2, 3 и т.д.)")
@@ -113,10 +111,6 @@ class HackathonPrizePlace(models.Model):
         help_text="Команды-победители этого места"
     )
 
-    def clean(self):
-        super().clean()
-        if self.pk:
-            raise ValidationError("Изменение призовых мест не разрешено.")
 
     class Meta:
         unique_together = ('hackathon', 'place')

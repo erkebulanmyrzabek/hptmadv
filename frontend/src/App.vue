@@ -12,6 +12,7 @@
       <router-view />
     </main>
   </div>
+
 </template>
 
 <script>
