@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analytics</title>
+</head>
+<body>
+    <h2>Analytics</h2>
+    <h3>Users by Date</h3>
+    <ul>
+    {% for data in users_by_date %}
+        <li>{{ data.date_created }}: {{ data.count }}</li>
+    {% endfor %}
+    </ul>
+    <h3>Hackathons by Date</h3>
+    <ul>
+    {% for data in hackathons_by_date %}
+        <li>{{ data.date_created }}: {{ data.count }}</li>
+    {% endfor %}
+    </ul>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" name="export">Export to CSV</button>
+    </form>
+    <a href="{% url 'admin_dashboard' %}">Back to Dashboard</a>
+</body>
+</html>

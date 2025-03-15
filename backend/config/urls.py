@@ -22,4 +22,5 @@ urlpatterns = [
     #path('api/',include('router.urls')),
     path('api/users/',include('apps.users.urls')),
     path('api/events/', include('apps.events.urls')),
+    path('admin-panel/', include('admin_panel.urls')),
 ]

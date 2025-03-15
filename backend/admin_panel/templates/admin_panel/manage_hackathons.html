@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Hackathons</title>
+</head>
+<body>
+    <h2>Manage Hackathons</h2>
+    <form method="post">
+        {% csrf_token %}
+        <input type="text" name="title" placeholder="Hackathon Title"><br>
+        <select name="status">
+            <option value="anounce">Anounce</option>
+            <option value="registration">Registration</option>
+            <option value="in_progress">In Progress</option>
+            <option value="finished">Finished</option>
+            <option value="archived">Archived</option>
+        </select><br>
+        <button type="submit" name="create">Create Hackathon</button>
+    </form>
+    <h3>Existing Hackathons</h3>
+    {% for hackathon in hackathons %}
+        <p>{{ hackathon.title }} ({{ hackathon.status }}) 
+            <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="hackathon_id" value="{{ hackathon.id }}">
+                <button type="submit" name="archive">Archive</button>
+            </form>
+        </p>
+    {% endfor %}
+    <a href="{% url 'admin_dashboard' %}">Back to Dashboard</a>
+</body>
+</html>

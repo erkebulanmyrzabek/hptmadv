@@ -1,44 +1,48 @@
 from django.db import models
+from django.contrib.auth.hashers import make_password, check_password
 
-# Create your models here.
-from django.db import models
-from django.contrib.auth.models import AbstractUser, UserManager
+class AdminUser(models.Model):
+    username = models.CharField(max_length=50, unique=True)
+    password = models.CharField(max_length=128)  # Храним захэшированный пароль
+    name = models.CharField(max_length=100)
 
-class Role(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    def set_password(self, raw_password):
+        """Устанавливает захэшированный пароль."""
+        self.password = make_password(raw_password)
+        self.save()
+
+    def check_password(self, raw_password):
+        """Проверяет пароль."""
+        return check_password(raw_password, self.password)
+
+    def __str__(self):
+        return f"{self.name} ({self.username})"
+
+# Опционально: предыдущие модели, если они есть
+class AdminAction(models.Model):
+    ACTION_TYPES = [
+        ('create_hackathon', 'Create Hackathon'),
+        ('edit_hackathon', 'Edit Hackathon'),
+        ('archive_hackathon', 'Archive Hackathon'),
+        ('ban_user', 'Ban User'),
+        ('unban_user', 'Unban User'),
+        ('change_role', 'Change Role'),
+        ('moderate_news', 'Moderate News'),
+    ]
+
+    user = models.ForeignKey('users.Participant', on_delete=models.CASCADE, related_name='admin_actions')
+    action_type = models.CharField(max_length=50, choices=ACTION_TYPES)
+    target_id = models.PositiveIntegerField(null=True, blank=True)
+    description = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.telegram_id} - {self.action_type} at {self.timestamp}"
+
+class AdminConfig(models.Model):
+    key = models.CharField(max_length=100, unique=True)
+    value = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
     def __str__(self):
-        return self.name
-
-class CustomUserManager(UserManager):
-    def create_superuser(self, telegram_id, password, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('username', f"user_{telegram_id}")
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
-        return self.create_user(telegram_id, password=password, **extra_fields)
-
-    def create_user(self, telegram_id, password=None, **extra_fields):
-        if not telegram_id:
-            raise ValueError('The Telegram ID must be set')
-        user = self.model(telegram_id=telegram_id, **extra_fields)
-        user.set_password(password)
-        user.save()
-        return user
-
-class Participant(AbstractUser):
-    # ... существующие поля ...
-
-    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
-    is_banned = models.BooleanField(default=False)
-
-    USERNAME_FIELD = 'telegram_id'
-    REQUIRED_FIELDS = []
-
-    objects = CustomUserManager()
-
-    # ... существующие методы ...
+        return f"{self.key}: {self.value}"

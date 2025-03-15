@@ -130,13 +130,6 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-from decouple import config
-
-# Чтение учетных данных из .env
-ADMIN_CREDENTIALS = config('ADMIN_CREDENTIALS', default='admin:admin123').split(',')
-ADMIN_USERS = {cred.split(':')[0]: cred.split(':')[1] for cred in ADMIN_CREDENTIALS}
-
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Logging Configuration
