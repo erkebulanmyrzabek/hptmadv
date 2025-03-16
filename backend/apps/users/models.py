@@ -108,6 +108,7 @@ class Participant(AbstractUser):
     friends = models.ManyToManyField('self', blank=True)
     theme = models.CharField(max_length=10, choices=THEME_CHOICES, null=True, blank=True)
     language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, null=True, blank=True)
+    password = models.CharField(max_length=255, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
