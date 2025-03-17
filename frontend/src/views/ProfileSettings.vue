@@ -131,7 +131,7 @@
           }
           console.log("Отправляемые данные:", payload); // Отладка
           const response = await axios.put(
-            'http://localhost:8000/api/users/profile/update/',
+            `${import.meta.env.VITE_BACKEND_API_URL}/users/profile/update/`,
             payload,
             { headers: { Authorization: `Bearer ${authStore.token}` } }
           );

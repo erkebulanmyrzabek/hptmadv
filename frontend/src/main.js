@@ -3,12 +3,14 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
 
-//TODO: Еркебулан надо добавить Telegram SDK
-// import TelegramWebApp from '@twa-dev/sdk';
-// TelegramWebApp.ready();
+
+import { VueTelegramPlugin } from 'vue-tg'
+
+
 
 const app = createApp(App);
 const pinia = createPinia();
+app.use(VueTelegramPlugin)
 app.use(router);
 app.use(pinia);
 

@@ -59,8 +59,10 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]  # TODO: Еркебулан потом замени на основной домен
-CSRF_TRUSTED_ORIGINS = ['http://localhost:5173']  # TODO: Это тоже
+CORS_ALLOWED_ORIGINS = ["https://hack.1ge.kz", "https://testprojectvuetgminiapp.web.app", "http://localhost:5173"]  # TODO: Еркебулан потом замени на основной домен
+CSRF_TRUSTED_ORIGINS = ['https://hack.1ge.kz', 'https://testprojectvuetgminiapp.web.app', 'http://localhost:5173']  # TODO: Это тоже
+CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
+CORS_ALLOW_HEADERS = ["accept", "authorization", "content-type", "origin", "x-csrftoken", "x-requested-with"]
 
 ROOT_URLCONF = 'config.urls'
 
@@ -128,7 +130,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -174,10 +178,21 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'loggers': {
+        'corsheaders': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    }
     },
+
+    
 }
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 JWT_SECRET = os.getenv('JWT_SECRET')
 
 AUTH_USER_MODEL = 'users.Participant'
+
+TELEGRAM_SIGNATURE_VERIFICATION = os.getenv('TELEGRAM_SIGNATURE_VERIFICATION')

@@ -11,7 +11,7 @@ export const useHackathonStore = defineStore('hackathon', {
     // Получение списка всех хакатонов
     async fetchHackathons() {
       try {
-        const response = await axios.get('http://localhost:8000/api/events/hackathons/');
+        const response = await axios.get(`${import.meta.env.VITE_BACKEND_API_URL}/events/hackathons/`);
         this.hackathons = response.data;
         console.log('Хакатоны:', this.hackathons);
       } catch (error) {
@@ -22,7 +22,7 @@ export const useHackathonStore = defineStore('hackathon', {
     // Получение деталей конкретного хакатона
     async fetchHackathonDetail(id) {
       try {
-        const response = await axios.get(`http://localhost:8000/api/events/hackathons/${id}/`);
+        const response = await axios.get(`${import.meta.env.VITE_BACKEND_API_URL}/events/hackathons/${id}/`);
         this.currentHackathon = response.data;
         console.log('Детали хакатона:', this.currentHackathon);
       } catch (error) {
@@ -35,7 +35,7 @@ export const useHackathonStore = defineStore('hackathon', {
       try {
         const authStore = useAuthStore();
         const response = await axios.post(
-          `http://localhost:8000/api/events/hackathons/${id}/register/`,
+          `${import.meta.env.VITE_BACKEND_API_URL}/events/hackathons/${id}/register/`,
           {},
           { headers: { Authorization: `Bearer ${authStore.token}` } }
         );
@@ -51,7 +51,7 @@ export const useHackathonStore = defineStore('hackathon', {
       try {
         const authStore = useAuthStore();
         const response = await axios.post(
-          `http://localhost:8000/api/events/hackathons/${id}/create_team/`,
+          `${import.meta.env.VITE_BACKEND_API_URL}/events/hackathons/${id}/create_team/`,
           { team_name: teamName },
           { headers: { Authorization: `Bearer ${authStore.token}` } }
         );
@@ -67,7 +67,7 @@ export const useHackathonStore = defineStore('hackathon', {
       try {
         const authStore = useAuthStore();
         const response = await axios.post(
-          `http://localhost:8000/api/events/hackathons/${id}/join_team/`,
+          `${import.meta.env.VITE_BACKEND_API_URL}/events/hackathons/${id}/join_team/`,
           { join_code: joinCode },
           { headers: { Authorization: `Bearer ${authStore.token}` } }
         );

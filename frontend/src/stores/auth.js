@@ -9,7 +9,7 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(initData) {
       try {
-        const response = await axios.post('http://localhost:8000/api/users/telegram-auth/', initData);
+        const response = await axios.post(`${import.meta.env.VITE_BACKEND_API_URL}/users/telegram-auth/`, initData);
         const { access } = response.data;
         console.log('Токен:', access);
         this.token = access;
@@ -21,7 +21,7 @@ export const useAuthStore = defineStore('auth', {
     },
     async fetchUser() {
       try {
-        const response = await axios.get('http://localhost:8000/api/users/profile/', {
+        const response = await axios.get(`${import.meta.env.VITE_BACKEND_API_URL}/users/profile/`, {
           headers: { Authorization: `Bearer ${this.token}` },
         });
         this.user = Array.isArray(response.data) ? response.data[0] : response.data;
