@@ -59,10 +59,12 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = ["https://hack.1ge.kz", "https://testprojectvuetgminiapp.web.app", "http://localhost:5173"]  # TODO: Еркебулан потом замени на основной домен
 CSRF_TRUSTED_ORIGINS = ['https://hack.1ge.kz', 'https://testprojectvuetgminiapp.web.app', 'http://localhost:5173']  # TODO: Это тоже
 CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
 CORS_ALLOW_HEADERS = ["accept", "authorization", "content-type", "origin", "x-csrftoken", "x-requested-with"]
+CORS_ORIGIN_WHITELIST = ["http://localhost:5173", "http://localhost:3000"]
 
 ROOT_URLCONF = 'config.urls'
 
