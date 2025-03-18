@@ -71,7 +71,7 @@ class HackathonSerializer(serializers.ModelSerializer):
     participants_info = HackathonParticipantsSerializer(read_only=True)
     total_prize_places = serializers.IntegerField(source='hackathon_prizes.count', read_only=True)
     total_prize_amount = serializers.SerializerMethodField()
-    hackathon_prizes = HackathonPrizePlaceSerializer(many=True, read_only=True)
+    hackathon_prizes = HackathonPrizeSerializer(many=True, read_only=True)
     is_participant = serializers.SerializerMethodField()
     teams = TeamSerializer(many=True, read_only=True)
 

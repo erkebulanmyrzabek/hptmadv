@@ -1,3 +1,128 @@
+<template>
+  <div class="hackathon-detail">
+    <div class="banner-container">
+      <img :src="hackathon?.details?.banner_image || 'https://via.placeholder.com/1200x400'" alt="Banner" class="banner-image" />
+      <div class="banner-overlay">
+        <h1>{{ hackathon?.title || 'Название хакатона' }}</h1>
+        <div class="header-info">
+          <span class="status-badge" :class="hackathon?.status">{{ getStatusIcon(hackathon?.status) }} {{ getStatusText(hackathon?.status) }}</span>
+          <span class="type-badge">{{ getFormatText(hackathon?.type) }}</span>
+          <span class="participants-badge">👥 {{ hackathon?.participants_info?.current_participants || 0 }}/{{ hackathon?.participants_info?.max_participants || '∞' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hackathon-content">
+      <div v-if="canRegister" class="section">
+        <button class="action-btn primary full-width" @click="openRegistrationModal">Регистрация</button>
+      </div>
+      <div v-else class="section">
+        <p v-if="!isAuthenticated">Пожалуйста, войдите в систему, чтобы зарегистрироваться.</p>
+        <p v-else-if="missingRequiredFields">Заполните все обязательные поля в профиле (имя, телефон, дата рождения).</p>
+        <p v-else-if="hackathon?.is_participant">Вы уже зарегистрированы на этот хакатон.</p>
+        <p v-else-if="hackathon?.status !== 'registration'">Регистрация на этот хакатон закрыта.</p>
+        <p v-else-if="hackathon?.participants_info?.max_participants && hackathon?.participants_info.current_participants >= hackathon?.participants_info.max_participants">Достигнут лимит участников.</p>
+        <p v-else>Период регистрации истёк.</p>
+      </div>
+
+      <div class="tabs">
+        <button v-for="tab in tabs" :key="tab.id" :class="{ 'tab-btn': true, 'active': currentTab === tab.id }" @click="currentTab = tab.id">
+          <span class="tab-icon">{{ tab.icon }}</span> {{ tab.name }}
+        </button>
+      </div>
+
+      <div class="section" v-if="currentTab === 'about'">
+        <h2>📝 О хакатоне</h2>
+        <p>{{ hackathon?.details?.full_description || 'Описание отсутствует' }}</p>
+      </div>
+
+      <div class="section" v-if="currentTab === 'prizes'">
+        <h2>🏆 Призы</h2>
+        <div class="prizes-grid">
+          <div v-for="prize in hackathon?.hackathon_prizes" :key="prize.place" class="prize-card">
+            <span class="prize-medal">{{ getPrizeMedal(prize.place) }}</span>
+            <div class="prize-value">{{ prize.prize_amount || 0 }}₸</div>
+            <div class="xp-value">{{ prize.xp_reward }} XP</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" v-if="currentTab === 'organizer'">
+        <h2>🏢 Организатор</h2>
+        <div class="organizer-card">
+          <img :src="hackathon?.organization?.logo || 'https://via.placeholder.com/100'" alt="Logo" class="org-logo" />
+          <div>
+            <h3>{{ hackathon?.organization?.name }}</h3>
+            <p>{{ hackathon?.organization?.description }}</p>
+            <div class="org-links">
+              <a :href="hackathon?.organization?.website" target="_blank" class="org-link">🌐 Сайт</a>
+              <a :href="hackathon?.organization?.telegram" target="_blank" class="org-link">📩 Telegram</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" v-if="currentTab === 'rules'">
+        <h2>📜 FAQ и Правила</h2>
+        <div v-html="formatFAQ(hackathon?.details?.faq)"></div>
+        <div v-html="formatRules(hackathon?.details?.rules)"></div>
+      </div>
+
+      <div class="section" v-if="currentTab === 'registration'">
+        <h2>✍️ Регистрация</h2>
+        <p v-if="canRegister">Регистрация открыта до {{ formatDate(hackathon?.schedule?.registration_end_date) }}</p>
+        <p v-else>Регистрация закрыта или вы уже участвуете.</p>
+      </div>
+    </div>
+
+    <!-- Модальное окно -->
+    <div v-if="showRegistrationModal" class="modal-overlay" @click.self="closeRegistrationModal">
+      <div class="modal-content">
+        <h2>Регистрация</h2>
+        <div v-if="isLoading" class="loading-state">
+          <div class="loader"></div>
+          <p>Регистрация...</p>
+        </div>
+        <div v-else-if="showSuccess" class="message-card">
+          <span class="message-icon">✅</span>
+          <p>{{ successMessage }}</p>
+          <button class="action-btn primary" @click="closeRegistrationModal">Закрыть</button>
+        </div>
+        <div v-else-if="!registrationStep">
+          <div class="registration-options">
+            <button class="option-btn" @click="registerAsSolo">Одиночная регистрация</button>
+            <button class="option-btn" @click="registerAsTeam">Создать команду</button>
+            <button class="option-btn" @click="joinTeamModal">Присоединиться к команде</button>
+          </div>
+        </div>
+        <div v-else-if="registrationStep === 'create-team'">
+          <div class="create-team-form">
+            <label>Название команды</label>
+            <input v-model="teamName" placeholder="Введите название" @input="updateTeamCode" />
+            <div v-if="teamName" class="team-code">
+              <p>Код для приглашения участников:</p>
+              <div class="code-display">
+                {{ generatedTeamCode }}
+                <button class="copy-btn" @click="copyCode">📋</button>
+              </div>
+            </div>
+            <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+            <button class="submit-btn" @click="createTeam">Создать</button>
+          </div>
+        </div>
+        <div v-else-if="registrationStep === 'join-team'">
+          <div class="team-code-input">
+            <label>Код команды</label>
+            <input v-model="joinCode" placeholder="Введите код" />
+            <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+            <button class="submit-btn" @click="joinTeam">Присоединиться</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script>
 import { useHackathonStore } from '../stores/hackathon';
 import { useAuthStore } from '../stores/auth';
@@ -9,8 +134,7 @@ export default {
       registrationStep: '',
       teamName: '',
       joinCode: '',
-      teamCreated: false,
-      teamJoinCode: '',
+      generatedTeamCode: '', // Реактивная переменная для кода команды
       errorMessage: '',
       currentTab: 'about',
       tabs: [
@@ -19,7 +143,11 @@ export default {
         { id: 'organizer', name: 'Организатор', icon: '🏢' },
         { id: 'rules', name: 'FAQ и Правила', icon: '📜' },
         { id: 'registration', name: 'Регистрация', icon: '✍️' }
-      ]
+      ],
+      isLoading: false,
+      showSuccess: false,
+      successMessage: '',
+      userLoaded: false
     };
   },
   computed: {
@@ -29,6 +157,7 @@ export default {
     },
     isAuthenticated() {
       const authStore = useAuthStore();
+      console.log('Token:', authStore.token);
       return !!authStore.token;
     },
     user() {
@@ -36,138 +165,194 @@ export default {
       return authStore.user;
     },
     missingRequiredFields() {
-      return !this.user.first_name || !this.user.phone_number || !this.user.birth_date;
+      if (!this.userLoaded) return true;
+      const missing = !this.user?.first_name || !this.user?.phone_number || !this.user?.birth_date;
+      console.log('Missing required fields:', {
+        first_name: this.user?.first_name,
+        phone_number: this.user?.phone_number,
+        birth_date: this.user?.birth_date,
+        result: missing
+      });
+      return missing;
+    },
+    canRegister() {
+      if (!this.hackathon || !this.isAuthenticated || this.missingRequiredFields) {
+        console.log('Initial checks failed:', {
+          hackathon: !!this.hackathon,
+          isAuthenticated: this.isAuthenticated,
+          missingRequiredFields: this.missingRequiredFields
+        });
+        return false;
+      }
+      const now = new Date();
+      const regEnd = new Date(this.hackathon.schedule?.registration_end_date);
+      
+      const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());
+      const regEndUTC = Date.UTC(regEnd.getUTCFullYear(), regEnd.getUTCMonth(), regEnd.getUTCDate(), regEnd.getUTCHours(), regEnd.getUTCMinutes(), regEnd.getUTCSeconds());
+
+      console.log('Now (UTC):', new Date(nowUTC));
+      console.log('Registration end date (UTC):', new Date(regEndUTC));
+      console.log('Can register:', {
+        status: this.hackathon.status === 'registration',
+        dateCheck: nowUTC <= regEndUTC,
+        participantsCheck: !this.hackathon.participants_info?.max_participants || 
+          this.hackathon.participants_info.current_participants < this.hackathon.participants_info.max_participants,
+        isParticipant: !this.hackathon.is_participant
+      });
+
+      return (
+        this.hackathon.status === 'registration' &&
+        nowUTC <= regEndUTC &&
+        (!this.hackathon.participants_info?.max_participants || 
+         this.hackathon.participants_info.current_participants < this.hackathon.participants_info.max_participants) &&
+        !this.hackathon.is_participant
+      );
     }
   },
   methods: {
     formatDate(date) {
       if (!date) return 'Не указано';
-      return new Date(date).toLocaleDateString('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      return new Date(date).toLocaleDateString('ru-RU', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
       });
     },
     getStatusText(status) {
-      const statusMap = {
-        'archived': 'Архив',
-        'anounce': 'Анонс',
-        'registration': 'Регистрация',
-        'in_progress': 'В процессе',
-        'finished': 'Завершен'
+      const statusMap = { 
+        'archived': 'Архив', 
+        'anounce': 'Анонс', 
+        'registration': 'Регистрация', 
+        'in_progress': 'В процессе', 
+        'finished': 'Завершен', 
+        'results_announced': 'Результаты объявлены' 
       };
       return statusMap[status] || status;
     },
     getStatusIcon(status) {
-      const iconMap = {
-        'archived': '📦',
-        'anounce': '📢',
-        'registration': '✍️',
-        'in_progress': '🔥',
-        'finished': '🏁'
+      const iconMap = { 
+        'archived': '📦', 
+        'anounce': '📢', 
+        'registration': '✍️', 
+        'in_progress': '🔥', 
+        'finished': '🏁', 
+        'results_announced': '📊' 
       };
       return iconMap[status] || '❓';
     },
     getFormatText(type) {
-      const formatMap = {
-        'online': 'Онлайн 💻',
-        'offline': 'Офлайн 🏢',
-        'hybrid': 'Гибрид 🔄'
-      };
+      const formatMap = { 'online': 'Онлайн 💻', 'offline': 'Офлайн 🏢', 'hybrid': 'Гибрид 🔄' };
       return formatMap[type] || type;
     },
     getPrizeMedal(place) {
-      const medals = {
-        1: '🥇',
-        2: '🥈',
-        3: '🥉'
-      };
+      const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
       return medals[place] || '🏅';
     },
     formatFAQ(faq) {
-      return faq.split('\n').map(line => `<p>${line}</p>`).join('');
+      return faq ? faq.split('\n').map(line => `<p>${line}</p>`).join('') : '<p>FAQ отсутствует</p>';
     },
     formatRules(rules) {
-      return rules.split('\n').map(line => `<p>${line}</p>`).join('');
+      return rules ? rules.split('\n').map(line => `<p>${line}</p>`).join('') : '<p>Правила отсутствуют</p>';
     },
-    // Методы для управления модальным окном
     openRegistrationModal() {
       this.showRegistrationModal = true;
       this.registrationStep = '';
+      this.errorMessage = '';
+      this.showSuccess = false;
     },
     closeRegistrationModal() {
       this.showRegistrationModal = false;
       this.registrationStep = '';
       this.teamName = '';
       this.joinCode = '';
-      this.teamCreated = false;
-      this.teamJoinCode = '';
+      this.generatedTeamCode = ''; // Сбрасываем код
+      this.errorMessage = '';
+      this.showSuccess = false;
     },
-    registerAsSolo() {
-      this.registerSolo();
-      this.closeRegistrationModal();
+    async registerAsSolo() {
+      this.isLoading = true;
+      try {
+        const hackathonStore = useHackathonStore();
+        const response = await hackathonStore.registerForHackathon(this.$route.params.id);
+        this.successMessage = response.detail;
+        this.showSuccess = true;
+      } catch (error) {
+        this.errorMessage = error.detail || 'Ошибка при регистрации';
+      } finally {
+        this.isLoading = false;
+      }
     },
     registerAsTeam() {
       this.registrationStep = 'create-team';
+      this.generatedTeamCode = this.generateTeamCode(); // Генерируем код при открытии формы
     },
     joinTeamModal() {
       this.registrationStep = 'join-team';
     },
-    async registerSolo() {
-      try {
-        this.errorMessage = '';
-        const hackathonStore = useHackathonStore();
-        const response = await hackathonStore.registerForHackathon(this.$route.params.id);
-        this.showSuccessMessage(response.detail);
-      } catch (error) {
-        this.errorMessage = error.detail || 'Ошибка при регистрации';
+    generateTeamCode() {
+      // Генерируем уникальный код команды
+      return 'TEAM' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    },
+    updateTeamCode() {
+      // Обновляем код при изменении названия команды
+      if (this.teamName) {
+        this.generatedTeamCode = this.generateTeamCode();
+      } else {
+        this.generatedTeamCode = '';
       }
     },
     async createTeam() {
+      if (!this.teamName) {
+        this.errorMessage = 'Укажите название команды';
+        return;
+      }
+      this.isLoading = true;
       try {
-        this.errorMessage = '';
-        if (!this.teamName) {
-          this.errorMessage = 'Укажите название команды';
-          return;
-        }
         const hackathonStore = useHackathonStore();
-        const response = await hackathonStore.createTeam(this.$route.params.id, this.teamName);
-        this.teamCreated = true;
-        this.teamJoinCode = response.team.join_code;
-        this.showSuccessMessage(response.detail);
+        const response = await hackathonStore.createTeam(this.$route.params.id, this.teamName, this.generatedTeamCode);
+        this.successMessage = response.detail;
+        this.showSuccess = true;
       } catch (error) {
         this.errorMessage = error.detail || 'Ошибка при создании команды';
+      } finally {
+        this.isLoading = false;
       }
     },
     async joinTeam() {
+      if (!this.joinCode) {
+        this.errorMessage = 'Укажите код команды';
+        return;
+      }
+      this.isLoading = true;
       try {
-        this.errorMessage = '';
-        if (!this.joinCode) {
-          this.errorMessage = 'Укажите код команды';
-          return;
-        }
         const hackathonStore = useHackathonStore();
         const response = await hackathonStore.joinTeam(this.$route.params.id, this.joinCode);
-        this.showSuccessMessage(response.detail);
-        this.closeRegistrationModal();
+        this.successMessage = response.detail;
+        this.showSuccess = true;
       } catch (error) {
-        this.errorMessage = error.detail || 'Ошибка при присоединении к команде';
+        this.errorMessage = error.detail || 'Ошибка при присоединении';
+      } finally {
+        this.isLoading = false;
       }
     },
     copyCode() {
-      if (!this.teamCreated) return;
-      navigator.clipboard.writeText(this.teamJoinCode);
-      this.showSuccessMessage('Код скопирован!');
-    },
-    showSuccessMessage(message) {
-      alert(message);
+      if (!this.generatedTeamCode) return;
+      navigator.clipboard.writeText(this.generatedTeamCode);
+      this.successMessage = 'Код скопирован!';
     }
   },
   async created() {
     const hackathonStore = useHackathonStore();
+    const authStore = useAuthStore();
     await hackathonStore.fetchHackathonDetail(this.$route.params.id);
+    if (this.isAuthenticated && !this.user) {
+      await authStore.fetchUser();
+    }
+    this.userLoaded = true;
+    console.log('User data:', this.user);
+    console.log('Hackathon data:', this.hackathon);
   }
 };
 </script>
@@ -292,35 +477,6 @@ export default {
   gap: 10px;
 }
 
-/* Timeline стили */
-.timeline {
-  position: relative;
-  padding: 20px 0;
-}
-
-.timeline-item {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.timeline-icon {
-  width: 40px;
-  height: 40px;
-  background: rgba(0, 191, 255, 0.1);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-}
-
-.timeline-content h3 {
-  color: #00BFFF;
-  margin-bottom: 5px;
-}
-
-/* Призы стили */
 .prizes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -355,7 +511,6 @@ export default {
   color: #FFD700;
 }
 
-/* Организатор стили */
 .organizer-card {
   display: flex;
   gap: 30px;
@@ -392,7 +547,6 @@ export default {
   transform: translateY(-2px);
 }
 
-/* Стили для модального окна (взято из второго кода) */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -409,7 +563,7 @@ export default {
 }
 
 .modal-content {
-  background: rgba(42, 52, 53, 0.7); /* Адаптировано под стиль первого кода */
+  background: rgba(42, 52, 53, 0.7);
   border-radius: 15px;
   padding: 24px;
   width: 90%;
@@ -447,11 +601,6 @@ export default {
 .option-btn:hover {
   background: rgba(0, 191, 255, 0.2);
   transform: translateY(-2px);
-}
-
-.option-btn svg {
-  width: 24px;
-  height: 24px;
 }
 
 .team-code-input,
@@ -513,16 +662,6 @@ export default {
   color: #00BFFF;
 }
 
-.copy-btn:disabled {
-  color: #666;
-  cursor: not-allowed;
-}
-
-.copy-btn svg {
-  width: 20px;
-  height: 20px;
-}
-
 .submit-btn {
   margin-top: 12px;
   padding: 12px 24px;
@@ -539,7 +678,6 @@ export default {
   background: linear-gradient(45deg, #0099cc, #007acc);
 }
 
-/* Стили для сообщений */
 .message-card {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 15px;
@@ -552,6 +690,7 @@ export default {
   font-size: 40px;
   margin-bottom: 15px;
   display: block;
+  animation: bounce 0.5s ease;
 }
 
 .action-btn {
@@ -587,7 +726,7 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
+  min-height: 200px;
   color: #ccc;
 }
 
@@ -601,26 +740,27 @@ export default {
   margin-bottom: 20px;
 }
 
+.error {
+  color: #ff4757;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
 }
 
 @media (max-width: 768px) {
