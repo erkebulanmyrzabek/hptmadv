@@ -1,14 +1,13 @@
-import { VueTelegramPlugin } from 'vue-tg'
-import { createApp } from 'vue';
-import { createPinia } from 'pinia';
-import App from './App.vue';
-import router from './router';
+import './assets/base.css'
+import './assets/main.css'
 
+import { createApp } from 'vue'
+import App from './App.vue'
+import router from './router'
+import { createPinia } from 'pinia'
 
-const app = createApp(App);
-const pinia = createPinia();
-app.use(router);
-app.use(pinia);
-app.use(VueTelegramPlugin)
+const app = createApp(App)
 
-app.mount('#app');
+app.use(router)
+app.use(createPinia())
+app.mount('#app')

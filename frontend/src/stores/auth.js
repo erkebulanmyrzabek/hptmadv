@@ -9,30 +9,26 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(initData) {
       try {
-        const response = await axios.post(`${import.meta.env.VITE_BACKEND_API_URL}/api/users/telegram-auth/`, initData);
+        const response = await axios.post('http://localhost:8000/api/users/telegram-auth/', initData);
         const { access } = response.data;
+        console.log('Токен:', access);
         this.token = access;
         localStorage.setItem('token', access);
         await this.fetchUser();
       } catch (error) {
         console.error('Ошибка авторизации:', error.response?.data || error);
-        throw error.response?.data || { detail: 'Ошибка авторизации' };
       }
     },
     async fetchUser() {
-      if (!this.token) {
-        throw new Error('Токен отсутствует');
-      }
       try {
-        const response = await axios.get(`${import.meta.env.VITE_BACKEND_API_URL}/api/users/profile/`, {
+        const response = await axios.get('http://localhost:8000/api/users/profile/', {
           headers: { Authorization: `Bearer ${this.token}` },
         });
-        this.user = response.data;
+        this.user = Array.isArray(response.data) ? response.data[0] : response.data;
         console.log('Данные пользователя в Pinia:', this.user);
       } catch (error) {
         console.error('Ошибка получения данных:', error.response?.data || error);
         this.logout();
-        throw error.response?.data || { detail: 'Не удалось загрузить данные пользователя' };
       }
     },
     logout() {
