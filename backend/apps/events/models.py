@@ -4,7 +4,6 @@ from django.core.exceptions import ValidationError
 from apps.users.models import Participant
 from admin_panel.models import Organization 
 
-
 class Hackathon(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='hackathons')
     title = models.CharField(max_length=255)
@@ -16,16 +15,13 @@ class Hackathon(models.Model):
             ('registration', 'Регистрация'),
             ('in_progress', 'В процессе'),
             ('finished', 'Завершен'),
+            ('results_announced', 'Результаты объявлены'),  # Новый статус
         ],
         default='archived'
     )
     type = models.CharField(
         max_length=20,
-        choices=[
-            ('online', 'Онлайн'),
-            ('offline', 'Офлайн'),
-            ('hybrid', 'Гибрид'),
-        ],
+        choices=[('online', 'Онлайн'), ('offline', 'Офлайн'), ('hybrid', 'Гибрид')],
         default='online'
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -74,13 +70,6 @@ class HackathonLocation(models.Model):
     def __str__(self):
         return f"Местоположение для {self.hackathon.title}"
     
-class HackathonParticipants(models.Model):
-    hackathon = models.OneToOneField(Hackathon, on_delete=models.CASCADE, related_name='participants_info')
-    participants = models.ManyToManyField('users.Participant', blank=True, related_name='participated_hackathons')
-    max_participants = models.IntegerField(null=True, blank=True)
-
-    def __str__(self):
-        return f"Участники для {self.hackathon.title}"
     
 class HackathonPrizePlace(models.Model):
     hackathon = models.ForeignKey(Hackathon, on_delete=models.CASCADE, related_name='hackathon_prizes')
@@ -127,3 +116,15 @@ class Tag(models.Model):
 
     def __str__(self):
         return self.name
+
+class HackathonParticipants(models.Model):
+    hackathon = models.OneToOneField(Hackathon, on_delete=models.CASCADE, related_name='participants_info')
+    max_participants = models.IntegerField(null=True, blank=True)
+    
+    def current_participants(self):
+        return sum(team.members.count() for team in self.hackathon.teams.all())
+
+    def __str__(self):
+        return f"Участники для {self.hackathon.title}"
+
+

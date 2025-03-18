@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import Hackathon, HackathonDetails, HackathonSchedule, HackathonLocation, HackathonParticipants, Tag, HackathonPrizePlace
-
+from apps.community.models import Team
 
 class HackathonDetailsInline(admin.StackedInline):
     model = HackathonDetails
@@ -39,6 +39,7 @@ class HackathonAdmin(admin.ModelAdmin):
     list_display = ('title', 'organization', 'status', 'type', 'created_at')
     list_filter = ('status', 'type', 'organization')
     search_fields = ('title',)
+    
 
 
 @admin.register(Tag)

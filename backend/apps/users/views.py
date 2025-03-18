@@ -1,3 +1,4 @@
+import logging
 from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.permissions import IsAuthenticated
@@ -11,30 +12,50 @@ import hmac
 import hashlib
 from .serializers import ParticipantUpdateSerializer
 
+logger = logging.getLogger(__name__)
+
 # Проверка подписи Telegram (временно закомментирована для теста)
 def verify_telegram_data(data):
-    received_hash = data.pop('hash', None)
-    data_check_string = '\n'.join([f'{k}={v}' for k, v in sorted(data.items())])
-    secret_key = hashlib.sha256(settings.JWT_SECRET.encode()).digest()
-    calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
-    return calculated_hash == received_hash
+    if not settings.TELEGRAM_SIGNATURE_VERIFICATION:
+        return True
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Participant
+    received_hash = data.get('hash')
+    if not received_hash:
+        logger.error("Отсутствует hash в данных Telegram: %s", data)
+        return False
+
+    # Удаляем hash из данных для проверки
+    data_copy = data.copy()
+    data_copy.pop('hash', None)
+
+    # Формируем строку для проверки
+    data_check_string = '\n'.join([f'{k}={v}' for k, v in sorted(data_copy.items())])
+    secret_key = hmac.new("WebAppData".encode(), settings.TELEGRAM_BOT_TOKEN.encode(), hashlib.sha256).digest()
+    calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+
+    if calculated_hash != received_hash:
+        logger.error("Подпись не совпадает. Рассчитанный hash: %s, Полученный hash: %s", calculated_hash, received_hash)
+        return False
+    return True
 
 class TelegramAuthView(APIView):
     def post(self, request):
-        # if not verify_telegram_data(data.copy()):  # Закомментируем проверку для теста
-        #     return Response({'error': 'Invalid Telegram data'}, status=status.HTTP_400_BAD_REQUEST)
-        #TODO: Еркебулан надо включить проверку для теста
-        init_data = request.data
+        init_data = request.data.copy()
+        print(init_data)  # Копируем данные для проверки
+
+        # Проверяем подпись Telegram
+        # if not verify_telegram_data(init_data):
+        #     return Response(
+        #         {'error': 'Invalid Telegram data'},
+        #         status=status.HTTP_400_BAD_REQUEST
+        #     )
+
         telegram_id = init_data.get('id')
-        
         if not telegram_id:
-            return Response({'error': 'Telegram ID не предоставлен'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'error': 'Telegram ID не предоставлен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Проверяем, существует ли пользователь с таким telegram_id
         try:
@@ -43,10 +64,13 @@ class TelegramAuthView(APIView):
             # Создаем нового пользователя
             user = Participant.objects.create(
                 telegram_id=telegram_id,
-                username=f"user_{telegram_id}",  # Генерируем временный username
+                first_name=init_data.get('first_name'),
+                last_name=init_data.get('last_name'),
+                username=init_data.get('username'),
+                #avatar=init_data.get('photo_url'), #TODO: добавить аватарку
             )
         
-        # Генерируем JWT-токены
+        # Генерируем JWT-токены``
         refresh = RefreshToken.for_user(user)
         return Response({
             'access': str(refresh.access_token),
@@ -60,6 +84,8 @@ class UserViewSet(ReadOnlyModelViewSet):
     def get_queryset(self):
         return Participant.objects.filter(id=self.request.user.id)
 
+logger = logging.getLogger(__name__)
+
 class UserUpdateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -68,7 +94,7 @@ class UserUpdateView(APIView):
         serializer = ParticipantUpdateSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             updated_user = serializer.save()
-            print("Обновленные данные:", updated_user.__dict__)  # Отладка
+            logger.info("Профиль успешно обновлен для пользователя %s: %s", user.telegram_id, updated_user.__dict__)
             return Response({'detail': 'Профиль успешно обновлен'}, status=status.HTTP_200_OK)
-        print("Ошибки сериализатора:", serializer.errors)  # Отладка
+        logger.error("Ошибки валидации для пользователя %s: %s", user.telegram_id, serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

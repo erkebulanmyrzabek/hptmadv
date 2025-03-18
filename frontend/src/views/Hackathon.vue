@@ -68,7 +68,7 @@ export default {
 
     const fetchHackathons = async () => {
         try {
-            const response = await axios.get('http://localhost:8000/api/events/hackathons/');
+            const response = await axios.get(`${import.meta.env.VITE_BACKEND_API_URL}/api/events/hackathons/`);
             hackathons.value = response.data;
         } catch (error) {
             console.error('Error fetching hackathons:', error);

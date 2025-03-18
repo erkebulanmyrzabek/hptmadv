@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, UserManager
+from django.core.validators import MinValueValidator, MaxValueValidator
 
-# Create your models here.
 class Skill(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
@@ -16,7 +16,7 @@ class Certificate(models.Model):
 
     def __str__(self):
         return self.name
-    
+
 class Achievement(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
@@ -49,85 +49,64 @@ class Participant(AbstractUser):
         ('male', 'Мужской'),
         ('female', 'Женский'),
     ]
-
     THEME_CHOICES = [
         ('dark', 'Темный'),
         ('light', 'Светлый'),
     ]
-
     LANGUAGE_CHOICES = [
         ('ru', 'Русский'),
         ('en', 'Английский'),
     ]
-
     CITY_CHOICES = [
-        ('Almaty', 'Алматы'),
-        ('Nur-Sultan', 'Нур-Султан'),
-        ('Shymkent', 'Шымкент'),
-        ('Taraz', 'Тараз'),
-        ('Aktobe', 'Актобе'),
-        ('Kyzylorda', 'Кызылорда'),
-        ('Kostanay', 'Костанай'),
-        ('Pavlodar', 'Павлодар'),
-        ('Oral', 'Орал'),
-        ('Atyrau', 'Атырау'),
-        ('Zhambyl', 'Жамбыл'),
-        ('Karagandy', 'Караганда'),
-        ('Kokshetau', 'Кокшетау'),
-        ('Mangystau', 'Мангистау'),
-        ('Petropavl', 'Петропавловск'),
-        ('Taldykorgan', 'Талдыкорган'),
-        ('Turkistan', 'Туркестан'),
-        ('Ust-Kamenogorsk', 'Усть-Каменогорск'),
-        # TODO дополнить список городов
+        ('Almaty', 'Алматы'), ('Nur-Sultan', 'Нур-Султан'), ('Shymkent', 'Шымкент'),
+        ('Taraz', 'Тараз'), ('Aktobe', 'Актобе'), ('Kyzylorda', 'Кызылорда'),
+        ('Kostanay', 'Костанай'), ('Pavlodar', 'Павлодар'), ('Oral', 'Орал'),
+        ('Atyrau', 'Атырау'), ('Zhambyl', 'Жамбыл'), ('Karagandy', 'Караганда'),
+        ('Kokshetau', 'Кокшетау'), ('Mangystau', 'Мангистау'), ('Petropavl', 'Петропавловск'),
+        ('Taldykorgan', 'Талдыкорган'), ('Turkistan', 'Туркестан'), ('Ust-Kamenogorsk', 'Усть-Каменогорск'),
     ]
-    
-    telegram_id = models.CharField(max_length=255, unique=True)
-    # username уже есть в AbstractUser, оставляем его
-    first_name = models.CharField(max_length=64, null=True, blank=True)
-    last_name = models.CharField(max_length=64, null=True, blank=True)
-    is_banned = models.BooleanField(default=False)
-    phone_number = models.CharField(max_length=11, unique=True, null=True, blank=True)
-    email = models.EmailField(unique=True, null=True, blank=True)
-    balance = models.IntegerField(default=0)
-    xp = models.IntegerField(default=0)
-    level = models.IntegerField(default=1)
-    is_premium = models.BooleanField(default=False)
-    skills_list = models.ManyToManyField(Skill, blank=True)
-    certificates = models.ManyToManyField(Certificate, blank=True)
-    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, null=True, blank=True)
-    birth_date = models.DateField(null=True, blank=True)
-    city = models.CharField(max_length=255, choices=CITY_CHOICES, null=True, blank=True)
-    country = models.CharField(max_length=255, null=True, blank=True)
-    address = models.CharField(max_length=255, null=True, blank=True)
-    avatar = models.URLField(null=True, blank=True)
-    bio = models.CharField(null=True, blank=True, max_length=60)
-    is_verified = models.BooleanField(default=False)
-    achievements = models.ManyToManyField(Achievement, blank=True)
-    hackathons = models.ManyToManyField('events.Hackathon', blank=True, related_name='participant_list')
-    friends = models.ManyToManyField('self', blank=True)
-    theme = models.CharField(max_length=10, choices=THEME_CHOICES, null=True, blank=True)
-    language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, null=True, blank=True)
-    password = models.CharField(max_length=255, null=True, blank=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    # Поля для аутентификации
+    telegram_id = models.CharField(max_length=255, unique=True, help_text="Уникальный ID Telegram пользователя")
+    first_name = models.CharField(max_length=64, null=True, blank=True, help_text="Имя пользователя")
+    last_name = models.CharField(max_length=64, null=True, blank=True, help_text="Фамилия пользователя")
+    is_banned = models.BooleanField(default=False, help_text="Блокировка пользователя")
+    phone_number = models.CharField(max_length=11, unique=True, null=True, blank=True, help_text="Номер телефона")
+    email = models.EmailField(unique=True, null=True, blank=True, help_text="Электронная почта")
+    balance = models.IntegerField(default=0, help_text="Баланс пользователя")
+    xp = models.IntegerField(default=0, help_text="Опытные очки (XP)")
+    level = models.IntegerField(default=1, help_text="Уровень пользователя")
+    is_premium = models.BooleanField(default=False, help_text="Премиум-статус")
+    skills_list = models.ManyToManyField(Skill, blank=True, related_name="users_with_skill", help_text="Список навыков")
+    certificates = models.ManyToManyField(Certificate, blank=True, related_name="certificate_holders", help_text="Сертификаты")
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, null=True, blank=True, help_text="Пол")
+    birth_date = models.DateField(null=True, blank=True, help_text="Дата рождения")
+    city = models.CharField(max_length=255, choices=CITY_CHOICES, null=True, blank=True, help_text="Город")
+    country = models.CharField(max_length=255, null=True, blank=True, help_text="Страна")
+    address = models.CharField(max_length=255, null=True, blank=True, help_text="Адрес")
+    avatar = models.URLField(null=True, blank=True, help_text="Ссылка на аватар")
+    bio = models.CharField(max_length=60, null=True, blank=True, help_text="Краткая биография")
+    is_verified = models.BooleanField(default=False, help_text="Подтверждён ли аккаунт")
+    achievements = models.ManyToManyField(Achievement, blank=True, related_name="achieved_by", help_text="Достижения")
+    hackathons = models.ManyToManyField('events.Hackathon', blank=True, related_name='participants', help_text="Хакатоны, в которых участвовал")
+    friends = models.ManyToManyField('self', blank=True, symmetrical=True, related_name='friend_of', help_text="Список друзей")
+    theme = models.CharField(max_length=10, choices=THEME_CHOICES, null=True, blank=True, help_text="Тема интерфейса")
+    language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, null=True, blank=True, default='ru', help_text="Язык интерфейса")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Дата создания аккаунта")
+    updated_at = models.DateTimeField(auto_now=True, help_text="Дата последнего обновления")
+    password = models.CharField(max_length=128, null=True, blank=True, help_text="Пароль")
     USERNAME_FIELD = 'telegram_id'
     REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
 
     def calculate_level(self):
+        """Расчёт уровня на основе опыта."""
         xp = self.xp
         level = 1
         required_xp = 0
-
         while xp >= required_xp:
             level += 1
             required_xp = 100 + (level - 2) * 50
-
         return level - 1
 
     def save(self, *args, **kwargs):
@@ -135,15 +114,16 @@ class Participant(AbstractUser):
         super().save(*args, **kwargs)
 
     def get_next_level_xp(self):
+        """XP, необходимый для следующего уровня."""
         return 100 + (self.level - 1) * 50
 
     def get_current_level_xp(self):
-        if self.level == 1:
-            return 0
-        return 100 + (self.level - 2) * 50
+        """XP, необходимый для текущего уровня."""
+        return 0 if self.level == 1 else 100 + (self.level - 2) * 50
 
     def hackathon_count(self):
+        """Количество хакатонов, в которых участвовал."""
         return self.hackathons.count()
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name} - {self.telegram_id}"
+        return f"{self.first_name or 'Unknown'} {self.last_name or ''} (@{self.telegram_id})"
