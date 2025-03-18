@@ -6,7 +6,7 @@ from .models import (
 from admin_panel.models import Organization
 from apps.users.models import Participant
 from django.db import models
-from backend.apps.community.serializers import TeamSerializer
+from apps.community.serializers import TeamSerializer
 from apps.users.serializers import ParticipantSerializer
 
 class TagSerializer(serializers.ModelSerializer):
