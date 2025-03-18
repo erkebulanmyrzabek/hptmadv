@@ -90,7 +90,6 @@
         </div>
         <div v-else-if="!registrationStep">
           <div class="registration-options">
-            <button class="option-btn" @click="registerAsSolo">Одиночная регистрация</button>
             <button class="option-btn" @click="registerAsTeam">Создать команду</button>
             <button class="option-btn" @click="joinTeamModal">Присоединиться к команде</button>
           </div>
@@ -98,14 +97,7 @@
         <div v-else-if="registrationStep === 'create-team'">
           <div class="create-team-form">
             <label>Название команды</label>
-            <input v-model="teamName" placeholder="Введите название" @input="updateTeamCode" />
-            <div v-if="teamName" class="team-code">
-              <p>Код для приглашения участников:</p>
-              <div class="code-display">
-                {{ generatedTeamCode }}
-                <button class="copy-btn" @click="copyCode">📋</button>
-              </div>
-            </div>
+            <input v-model="teamName" placeholder="Введите название" />
             <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
             <button class="submit-btn" @click="createTeam">Создать</button>
           </div>
@@ -134,7 +126,6 @@ export default {
       registrationStep: '',
       teamName: '',
       joinCode: '',
-      generatedTeamCode: '', // Реактивная переменная для кода команды
       errorMessage: '',
       currentTab: 'about',
       tabs: [
@@ -142,12 +133,12 @@ export default {
         { id: 'prizes', name: 'Призы', icon: '🏆' },
         { id: 'organizer', name: 'Организатор', icon: '🏢' },
         { id: 'rules', name: 'FAQ и Правила', icon: '📜' },
-        { id: 'registration', name: 'Регистрация', icon: '✍️' }
+        { id: 'registration', name: 'Регистрация', icon: '✍️' },
       ],
       isLoading: false,
       showSuccess: false,
       successMessage: '',
-      userLoaded: false
+      userLoaded: false,
     };
   },
   computed: {
@@ -157,7 +148,6 @@ export default {
     },
     isAuthenticated() {
       const authStore = useAuthStore();
-      console.log('Token:', authStore.token);
       return !!authStore.token;
     },
     user() {
@@ -167,83 +157,62 @@ export default {
     missingRequiredFields() {
       if (!this.userLoaded) return true;
       const missing = !this.user?.first_name || !this.user?.phone_number || !this.user?.birth_date;
-      console.log('Missing required fields:', {
-        first_name: this.user?.first_name,
-        phone_number: this.user?.phone_number,
-        birth_date: this.user?.birth_date,
-        result: missing
-      });
       return missing;
     },
     canRegister() {
       if (!this.hackathon || !this.isAuthenticated || this.missingRequiredFields) {
-        console.log('Initial checks failed:', {
-          hackathon: !!this.hackathon,
-          isAuthenticated: this.isAuthenticated,
-          missingRequiredFields: this.missingRequiredFields
-        });
         return false;
       }
       const now = new Date();
       const regEnd = new Date(this.hackathon.schedule?.registration_end_date);
-      
+
       const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());
       const regEndUTC = Date.UTC(regEnd.getUTCFullYear(), regEnd.getUTCMonth(), regEnd.getUTCDate(), regEnd.getUTCHours(), regEnd.getUTCMinutes(), regEnd.getUTCSeconds());
-
-      console.log('Now (UTC):', new Date(nowUTC));
-      console.log('Registration end date (UTC):', new Date(regEndUTC));
-      console.log('Can register:', {
-        status: this.hackathon.status === 'registration',
-        dateCheck: nowUTC <= regEndUTC,
-        participantsCheck: !this.hackathon.participants_info?.max_participants || 
-          this.hackathon.participants_info.current_participants < this.hackathon.participants_info.max_participants,
-        isParticipant: !this.hackathon.is_participant
-      });
 
       return (
         this.hackathon.status === 'registration' &&
         nowUTC <= regEndUTC &&
-        (!this.hackathon.participants_info?.max_participants || 
-         this.hackathon.participants_info.current_participants < this.hackathon.participants_info.max_participants) &&
+        (!this.hackathon.participants_info?.max_participants ||
+          this.hackathon.participants_info.current_participants < this.hackathon.participants_info.max_participants) &&
         !this.hackathon.is_participant
       );
-    }
+    },
   },
   methods: {
     formatDate(date) {
       if (!date) return 'Не указано';
-      return new Date(date).toLocaleDateString('ru-RU', { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      return new Date(date).toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     },
     getStatusText(status) {
-      const statusMap = { 
-        'archived': 'Архив', 
-        'anounce': 'Анонс', 
-        'registration': 'Регистрация', 
-        'in_progress': 'В процессе', 
-        'finished': 'Завершен', 
-        'results_announced': 'Результаты объявлены' 
+      const statusMap = {
+        archived: 'Архив',
+        anounce: 'Анонс',
+        registration: 'Регистрация',
+        in_progress: 'В процессе',
+        finished: 'Завершен',
+        results_announced: 'Результаты объявлены',
       };
       return statusMap[status] || status;
     },
     getStatusIcon(status) {
-      const iconMap = { 
-        'archived': '📦', 
-        'anounce': '📢', 
-        'registration': '✍️', 
-        'in_progress': '🔥', 
-        'finished': '🏁', 
-        'results_announced': '📊' 
+      const iconMap = {
+        archived: '📦',
+        anounce: '📢',
+        registration: '✍️',
+        in_progress: '🔥',
+        finished: '🏁',
+        results_announced: '📊',
       };
       return iconMap[status] || '❓';
     },
     getFormatText(type) {
-      const formatMap = { 'online': 'Онлайн 💻', 'offline': 'Офлайн 🏢', 'hybrid': 'Гибрид 🔄' };
+      const formatMap = { online: 'Онлайн 💻', offline: 'Офлайн 🏢', hybrid: 'Гибрид 🔄' };
       return formatMap[type] || type;
     },
     getPrizeMedal(place) {
@@ -267,41 +236,14 @@ export default {
       this.registrationStep = '';
       this.teamName = '';
       this.joinCode = '';
-      this.generatedTeamCode = ''; // Сбрасываем код
       this.errorMessage = '';
       this.showSuccess = false;
     },
-    async registerAsSolo() {
-      this.isLoading = true;
-      try {
-        const hackathonStore = useHackathonStore();
-        const response = await hackathonStore.registerForHackathon(this.$route.params.id);
-        this.successMessage = response.detail;
-        this.showSuccess = true;
-      } catch (error) {
-        this.errorMessage = error.detail || 'Ошибка при регистрации';
-      } finally {
-        this.isLoading = false;
-      }
-    },
     registerAsTeam() {
       this.registrationStep = 'create-team';
-      this.generatedTeamCode = this.generateTeamCode(); // Генерируем код при открытии формы
     },
     joinTeamModal() {
       this.registrationStep = 'join-team';
-    },
-    generateTeamCode() {
-      // Генерируем уникальный код команды
-      return 'TEAM' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    },
-    updateTeamCode() {
-      // Обновляем код при изменении названия команды
-      if (this.teamName) {
-        this.generatedTeamCode = this.generateTeamCode();
-      } else {
-        this.generatedTeamCode = '';
-      }
     },
     async createTeam() {
       if (!this.teamName) {
@@ -311,8 +253,8 @@ export default {
       this.isLoading = true;
       try {
         const hackathonStore = useHackathonStore();
-        const response = await hackathonStore.createTeam(this.$route.params.id, this.teamName, this.generatedTeamCode);
-        this.successMessage = response.detail;
+        const response = await hackathonStore.createTeam(this.$route.params.id, this.teamName);
+        this.successMessage = `Команда "${this.teamName}" создана! Код для приглашения: ${response.join_code}`;
         this.showSuccess = true;
       } catch (error) {
         this.errorMessage = error.detail || 'Ошибка при создании команды';
@@ -329,7 +271,7 @@ export default {
       try {
         const hackathonStore = useHackathonStore();
         const response = await hackathonStore.joinTeam(this.$route.params.id, this.joinCode);
-        this.successMessage = response.detail;
+        this.successMessage = `Вы присоединились к команде "${response.name}"!`;
         this.showSuccess = true;
       } catch (error) {
         this.errorMessage = error.detail || 'Ошибка при присоединении';
@@ -338,10 +280,10 @@ export default {
       }
     },
     copyCode() {
-      if (!this.generatedTeamCode) return;
-      navigator.clipboard.writeText(this.generatedTeamCode);
+      if (!this.joinCode) return;
+      navigator.clipboard.writeText(this.joinCode);
       this.successMessage = 'Код скопирован!';
-    }
+    },
   },
   async created() {
     const hackathonStore = useHackathonStore();
@@ -351,13 +293,12 @@ export default {
       await authStore.fetchUser();
     }
     this.userLoaded = true;
-    console.log('User data:', this.user);
-    console.log('Hackathon data:', this.hackathon);
-  }
+  },
 };
 </script>
 
 <style scoped>
+/* Стили остаются без изменений */
 .hackathon-detail {
   min-height: 100vh;
   background: #1a1a1a;

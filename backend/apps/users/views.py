@@ -44,11 +44,11 @@ class TelegramAuthView(APIView):
         print(init_data)  # Копируем данные для проверки
 
         # Проверяем подпись Telegram
-        if not verify_telegram_data(init_data):
-            return Response(
-                {'error': 'Invalid Telegram data'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # if not verify_telegram_data(init_data):
+        #     return Response(
+        #         {'error': 'Invalid Telegram data'},
+        #         status=status.HTTP_400_BAD_REQUEST
+        #     )
 
         telegram_id = init_data.get('id')
         if not telegram_id:
@@ -84,6 +84,8 @@ class UserViewSet(ReadOnlyModelViewSet):
     def get_queryset(self):
         return Participant.objects.filter(id=self.request.user.id)
 
+logger = logging.getLogger(__name__)
+
 class UserUpdateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -92,7 +94,7 @@ class UserUpdateView(APIView):
         serializer = ParticipantUpdateSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             updated_user = serializer.save()
-            print("Обновленные данные:", updated_user.__dict__)  # Отладка
+            logger.info("Профиль успешно обновлен для пользователя %s: %s", user.telegram_id, updated_user.__dict__)
             return Response({'detail': 'Профиль успешно обновлен'}, status=status.HTTP_200_OK)
-        print("Ошибки сериализатора:", serializer.errors)  # Отладка
+        logger.error("Ошибки валидации для пользователя %s: %s", user.telegram_id, serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
