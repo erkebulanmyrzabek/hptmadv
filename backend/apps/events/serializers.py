@@ -1,11 +1,13 @@
 from rest_framework import serializers
 from .models import (
     Hackathon, HackathonDetails, HackathonSchedule, HackathonLocation, 
-    HackathonParticipants, Tag, HackathonPrizePlace
+    HackathonParticipants, Tag, HackathonPrizePlace, HackathonPrizePlace
 )
 from admin_panel.models import Organization
 from apps.users.models import Participant
 from django.db import models
+from backend.apps.community.serializers import TeamSerializer
+from apps.users.serializers import ParticipantSerializer
 
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,11 +21,18 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'website', 'telegram', 'instagram']
 
 
-class HackathonPrizePlaceSerializer(serializers.ModelSerializer):
+class HackathonPrizeSerializer(serializers.ModelSerializer):
+    winners = serializers.SerializerMethodField()
+    winner_teams = TeamSerializer(many=True, read_only=True)
+
     class Meta:
         model = HackathonPrizePlace
-        fields = ['place', 'number_of_winners', 'prize_amount', 'xp_reward']
+        fields = ['place', 'number_of_winners', 'prize_amount', 'xp_reward', 'winners', 'winner_teams']
 
+    def get_winners(self, obj):
+        # Возвращаем только тех участников, которые привязаны к призовому месту
+        winners = obj.winners.all()  # Предполагается, что winners — это ManyToMany поле
+        return ParticipantSerializer(winners, many=True).data
 
 class HackathonDetailsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -44,12 +53,14 @@ class HackathonLocationSerializer(serializers.ModelSerializer):
 
 
 class HackathonParticipantsSerializer(serializers.ModelSerializer):
-    participants_count = serializers.IntegerField(source='participants.count', read_only=True)
+    current_participants = serializers.SerializerMethodField()
 
     class Meta:
         model = HackathonParticipants
-        fields = ['participants_count', 'max_participants']
+        fields = ['current_participants', 'max_participants']
 
+    def get_current_participants(self, obj):
+        return obj.current_participants()
 
 class HackathonSerializer(serializers.ModelSerializer):
     organization = OrganizationSerializer(read_only=True)
@@ -62,6 +73,7 @@ class HackathonSerializer(serializers.ModelSerializer):
     total_prize_amount = serializers.SerializerMethodField()
     hackathon_prizes = HackathonPrizePlaceSerializer(many=True, read_only=True)
     is_participant = serializers.SerializerMethodField()
+    teams = TeamSerializer(many=True, read_only=True)
 
     class Meta:
         model = Hackathon
@@ -69,7 +81,7 @@ class HackathonSerializer(serializers.ModelSerializer):
             'id', 'title', 'status', 'type', 'organization', 'tags', 
             'details', 'schedule', 'location', 'participants_info', 
             'total_prize_places', 'total_prize_amount', 'hackathon_prizes',
-            'created_at', 'is_participant'
+            'created_at', 'is_participant', 'teams'
         ]
 
     def get_total_prize_amount(self, obj):
@@ -78,5 +90,5 @@ class HackathonSerializer(serializers.ModelSerializer):
     def get_is_participant(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            return obj.participants_info.participants.filter(id=request.user.id).exists()
+            return any(team.members.filter(id=request.user.id).exists() for team in obj.teams.all())
         return False
