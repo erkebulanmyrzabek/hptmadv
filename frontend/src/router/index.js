@@ -4,6 +4,8 @@ import HackathonsView from '@/views/HackathonsView.vue'
 import RatingView from '@/views/RatingView.vue'
 import ShopView from '@/views/ShopView.vue'
 import ProfileView from '@/views/ProfileView.vue'
+import LoginView from '@/views/Login.vue'
+
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -38,6 +40,11 @@ const router = createRouter({
       path: '/profile',
       name: 'profile',
       component: ProfileView
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: LoginView
     }
   ]
 })

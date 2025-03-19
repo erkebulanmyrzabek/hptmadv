@@ -75,7 +75,7 @@
         <div class="card-header">
           <div 
             class="hackathon-cover" 
-            :style="{ backgroundImage: `url(${hackathon.coverImage || getDefaultBackground(hackathon.type)})` }"
+            :style="{ backgroundImage: `url(${hackathon.cover_image || getDefaultBackground(hackathon.tracks && hackathon.tracks.length > 0 ? hackathon.tracks[0].title.toLowerCase() : 'default')})` }"
           >
             <div class="cover-overlay">
               <div class="status-tags">
@@ -83,7 +83,7 @@
                   {{ getStatusLabel(hackathon.status) }}
                 </span>
                 <span v-if="hackathon.featured" class="featured-tag">
-                  
+                  Рекомендуем
                 </span>
               </div>
             </div>
@@ -96,7 +96,7 @@
             <p>{{ hackathon.description }}</p>
             
             <div class="tags-container">
-              <span v-for="tag in hackathon.tags" :key="tag" class="tag">
+              <span v-for="tag in getHackathonTags(hackathon)" :key="tag" class="tag">
                 {{ tag }}
               </span>
             </div>
@@ -110,14 +110,14 @@
                 <line x1="8" y1="2" x2="8" y2="6"/>
                 <line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
-              <span>{{ formatDate(hackathon.startDate) }}</span>
+              <span>{{ formatDate(hackathon.start_date) }}</span>
             </div>
             
             <div class="detail-item">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
               </svg>
-              <span>{{ formatPrize(hackathon.prizePool) }}</span>
+              <span>{{ formatPrize(hackathon.prize_pool) }}</span>
             </div>
 
             <div class="detail-item">
@@ -127,7 +127,7 @@
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
-              <span>{{ hackathon.participants }} </span>
+              <span>{{ hackathon.participants ? hackathon.participants.length : 0 }}</span>
             </div>
           </div>
 
@@ -159,13 +159,14 @@
 
             <div class="main-buttons">
               <router-link 
+                v-if="hackathon.id && canRegister(hackathon)"
                 :to="{ name: 'hackathon-details', params: { id: hackathon.id }, hash: '#registration' }" 
                 class="register-btn"
-                v-if="canRegister(hackathon)"
               >
                 Зарегистрироваться
               </router-link>
               <router-link 
+                v-if="hackathon.id"
                 :to="{ name: 'hackathon-details', params: { id: hackathon.id }}" 
                 class="details-btn"
               >
@@ -182,6 +183,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import apiClient from '@/api/axios' // Импортируем настроенный axios
 
 const router = useRouter()
 const loading = ref(false)
@@ -197,7 +199,7 @@ const filters = [
   { label: 'Активные', value: 'active' },
   { label: 'Скоро', value: 'upcoming' },
   { label: 'Завершенные', value: 'completed' },
-  { label: 'AI/ML', value: 'ai' },
+  { label: 'AI & ML', value: 'ai & ml' },
   { label: 'Web3', value: 'web3' },
   { label: 'GameDev', value: 'gamedev' }
 ]
@@ -209,6 +211,45 @@ const sortOptions = [
   { label: 'По популярности', value: 'popularity' }
 ]
 
+// Данные хакатонов
+const hackathons = ref([])
+
+// Загрузка хакатонов через API
+const loadHackathons = async () => {
+  loading.value = true
+  error.value = null
+  
+  try {
+    const response = await apiClient.get('/api/hackathons/')
+    const data = Array.isArray(response.data) ? response.data : [response.data]
+    hackathons.value = data
+      .filter(hackathon => {
+        if (!hackathon.id) {
+          console.warn('Хакатон без ID:', hackathon)
+          return false
+        }
+        return true
+      })
+      .map(hackathon => ({
+        ...hackathon,
+        isFavorite: false,
+        featured: hackathon.status === 'registration',
+        tracks: hackathon.tracks || [],
+        participants: hackathon.participants || []
+      }))
+  } catch (e) {
+    error.value = 'Не удалось загрузить хакатоны. Попробуйте позже.'
+    console.error('Ошибка при загрузке хакатонов:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadHackathons()
+})
+
+// Функции для фильтров и сортировки
 const getCurrentSortLabel = () => {
   return sortOptions.find(option => option.value === currentSort.value)?.label || ''
 }
@@ -217,61 +258,6 @@ const setSort = (value) => {
   currentSort.value = value
   showSortOptions.value = false
 }
-
-// Данные хакатонов
-const hackathons = ref([
-  {
-    id: '1',
-    title: 'AI Hack 2025',
-    description: 'Создайте инновационные решения с использованием искусственного интеллекта и компьютерного зрения. Разработайте проекты в области NLP, Computer Vision или Robotics.',
-    coverImage: '/images/ai-hackathon.jpg',
-    type: 'ai',
-    startDate: '2025-04-01',
-    endDate: '2025-04-03',
-    registrationDeadline: '2025-03-25',
-    prizePool: 1000000,
-    status: 'registration',
-    participants: 128,
-    featured: true,
-    isFavorite: false,
-    tags: ['Python', 'AI/ML', 'Computer Vision'],
-    tracks: ['Computer Vision', 'NLP', 'Robotics']
-  },
-  {
-    id: '2',
-    title: 'Web3 Challenge',
-    description: 'Разработка децентрализованных приложений будущего. Создайте инновационные решения в области DeFi, NFT или GameFi на любой блокчейн-платформе.',
-    coverImage: '/images/web3-challenge.jpg',
-    type: 'web3',
-    startDate: '2025-05-15',
-    endDate: '2025-05-17',
-    registrationDeadline: '2025-05-10',
-    prizePool: 750000,
-    status: 'upcoming',
-    participants: 64,
-    featured: false,
-    isFavorite: false,
-    tags: ['Blockchain', 'Smart Contracts', 'DeFi'],
-    tracks: ['DeFi', 'NFT', 'GameFi']
-  },
-  {
-    id: '3',
-    title: 'GameDev Jam',
-    description: 'Создайте игру за 48 часов. Выберите одно из направлений: мобильные игры, VR/AR или инди-игры. Используйте любой игровой движок.',
-    coverImage: '/images/gamedev-jam.jpg',
-    type: 'gamedev',
-    startDate: '2025-06-01',
-    endDate: '2025-06-03',
-    registrationDeadline: '2025-05-30',
-    prizePool: 500000,
-    status: 'upcoming',
-    participants: 96,
-    featured: false,
-    isFavorite: false,
-    tags: ['Unity', 'Unreal Engine', 'Game Design'],
-    tracks: ['Mobile Games', 'VR/AR', 'Indie']
-  }
-])
 
 // Фильтрация хакатонов
 const filteredHackathons = computed(() => {
@@ -283,7 +269,7 @@ const filteredHackathons = computed(() => {
     filtered = filtered.filter(hackathon => 
       hackathon.title.toLowerCase().includes(query) ||
       hackathon.description.toLowerCase().includes(query) ||
-      hackathon.tags.some(tag => tag.toLowerCase().includes(query))
+      getHackathonTags(hackathon).some(tag => tag.toLowerCase().includes(query))
     )
   }
 
@@ -292,7 +278,9 @@ const filteredHackathons = computed(() => {
     if (['active', 'upcoming', 'completed'].includes(currentFilter.value)) {
       filtered = filtered.filter(h => h.status === currentFilter.value)
     } else {
-      filtered = filtered.filter(h => h.type === currentFilter.value)
+      filtered = filtered.filter(h => 
+        h.tracks.some(track => track.title.toLowerCase() === currentFilter.value)
+      )
     }
   }
 
@@ -300,12 +288,12 @@ const filteredHackathons = computed(() => {
   filtered.sort((a, b) => {
     switch (currentSort.value) {
       case 'prize':
-        return b.prizePool - a.prizePool
+        return b.prize_pool - a.prize_pool
       case 'popularity':
-        return b.participants - a.participants
+        return (b.participants ? b.participants.length : 0) - (a.participants ? a.participants.length : 0)
       case 'date':
       default:
-        return new Date(a.startDate) - new Date(b.startDate)
+        return new Date(a.start_date) - new Date(b.start_date)
     }
   })
 
@@ -313,7 +301,7 @@ const filteredHackathons = computed(() => {
 })
 
 const filterHackathons = () => {
-  // Дополнительная логика фильтрации если нужна
+  // Фильтрация выполняется автоматически через computed
 }
 
 // Форматирование
@@ -340,16 +328,25 @@ const getStatusLabel = (status) => {
     active: 'Активный',
     completed: 'Завершен'
   }
-  return labels[status]
+  return labels[status] || status
 }
 
 const getDefaultBackground = (type) => {
   const backgrounds = {
-    ai: '/images/default-ai.jpg',
-    web3: '/images/default-web3.jpg',
-    gamedev: '/images/default-gamedev.jpg'
+    'ai & ml': '/images/default-ai.jpg',
+    'web3': '/images/default-web3.jpg',
+    'gamedev': '/images/default-gamedev.jpg',
+    'default': '/images/default-hackathon.jpg'
   }
   return backgrounds[type] || '/images/default-hackathon.jpg'
+}
+
+const getHackathonTags = (hackathon) => {
+  const tags = []
+  hackathon.tracks.forEach(track => {
+    tags.push(track.title)
+  })
+  return tags
 }
 
 // Действия с карточками
@@ -364,47 +361,22 @@ const shareHackathon = (hackathon) => {
   const url = `${window.location.origin}/hackathons/${hackathon.id}`
   navigator.clipboard.writeText(url)
     .then(() => {
-      // 
+      alert('Ссылка скопирована!')
     })
     .catch(() => {
-      // 
+      alert('Не удалось скопировать ссылку.')
     })
 }
 
 const canRegister = (hackathon) => {
   return hackathon.status === 'registration' && 
-    new Date(hackathon.registrationDeadline) > new Date()
+    new Date(hackathon.registration_start) <= new Date() &&
+    new Date(hackathon.start_date) > new Date()
 }
-
-const openRegistration = (hackathon) => {
-  router.push({
-    name: 'hackathon-registration',
-    params: { id: hackathon.id }
-  })
-}
-
-// Загрузка данных
-const loadHackathons = async () => {
-  loading.value = true
-  error.value = null
-  
-  try {
-    // API 
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    // hackathons.value = await response.json()
-  } catch (e) {
-    error.value = 'Не удалось загрузить хакатоны. Попробуйте позже.'
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(() => {
-  loadHackathons()
-})
 </script>
 
 <style scoped>
+/* Стили остаются без изменений */
 .hackathons-view {
   padding: 20px;
   margin-bottom: 70px;
@@ -417,7 +389,7 @@ onMounted(() => {
   }
 }
 
-/* */
+/* Поиск и фильтры */
 .search-section {
   margin-bottom: 24px;
 }
@@ -551,7 +523,7 @@ onMounted(() => {
   font-weight: 500;
 }
 
-/* */
+/* Состояния загрузки и ошибки */
 .loading-state,
 .error-state {
   display: flex;
@@ -617,14 +589,14 @@ onMounted(() => {
   background: var(--primary-color-dark);
 }
 
-/* */
+/* Сетка хакатонов */
 .hackathons-grid {
   display: grid;
   gap: 24px;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 }
 
-/* */
+/* Карточка хакатона */
 .hackathon-card {
   background: var(--surface-color);
   border-radius: var(--radius-lg);

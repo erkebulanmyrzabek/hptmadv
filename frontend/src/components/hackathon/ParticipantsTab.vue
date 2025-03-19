@@ -107,35 +107,7 @@ const searchQuery = ref('');
 const teamFilter = ref('');
 const sortBy = ref('name');
 const sortDirection = ref('asc');
-
-// Моковые данные
-const participants = ref([
-  {
-    id: 1,
-    name: 'Алексей Иванов',
-    team: 'CodeMasters',
-    status: 'in-team',
-    stack: ['Python', 'TensorFlow'],
-    role: 'Разработчик',
-    isCurrentUser: true
-  },
-  {
-    id: 2,
-    name: 'Мария Петрова',
-    team: null,
-    status: 'no-team',
-    stack: ['JavaScript', 'Vue.js', 'Node.js'],
-    role: 'Full-stack разработчик'
-  },
-  {
-    id: 3,
-    name: 'Дмитрий Сидоров',
-    team: 'BlockchainPros',
-    status: 'in-team',
-    stack: ['Solidity', 'Web3.js', 'React'],
-    role: 'Blockchain разработчик'
-  }
-]);
+const participants = ref([]);
 
 // Вычисляемые свойства
 const averageStackSize = computed(() => {

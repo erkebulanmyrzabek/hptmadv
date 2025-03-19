@@ -2,7 +2,7 @@
   <div class="general-info">
     <!-- Cover Image and Status -->
     <div class="cover-section">
-      <img :src="hackathon.coverImage" :alt="hackathon.title" class="cover-image">
+      <img :src="hackathon.cover_image" :alt="hackathon.title" class="cover-image">
       <div class="status-badge" :class="hackathon.status">
         {{ getStatusText(hackathon.status) }}
       </div>
@@ -24,7 +24,7 @@
           </svg>
           <div class="info-text">
             <span class="label">Даты проведения</span>
-            <span class="value">{{ formatDate(hackathon.startDate) }} - {{ formatDate(hackathon.endDate) }}</span>
+            <span class="value">{{ formatDate(hackathon.start_date) }} - {{ formatDate(hackathon.end_date) }}</span>
           </div>
         </div>
 
@@ -46,7 +46,7 @@
           </svg>
           <div class="info-text">
             <span class="label">Призовой фонд</span>
-            <span class="value">{{ formatPrize(hackathon.prizePool) }}</span>
+            <span class="value">{{ formatPrize(hackathon.prize_pool) }}</span>
           </div>
         </div>
       </div>
@@ -56,7 +56,7 @@
         <div class="progress-bar">
           <div class="progress-text">
             <span>Регистрация открыта</span>
-            <span>{{ getDaysLeft(hackathon.registrationStart) }} дней осталось</span>
+            <span>{{ getDaysLeft(hackathon.registration_start) }} дней осталось</span>
           </div>
           <div class="progress-track">
             <div class="progress-fill" :style="{ width: getRegistrationProgress() + '%' }"></div>
@@ -132,6 +132,7 @@ const props = defineProps({
   }
 })
 
+
 const getStatusText = (status) => {
   const statusMap = {
     registration: 'Регистрация',
@@ -160,7 +161,7 @@ const formatEventTime = (time) => {
 const formatPrize = (prize) => {
   return new Intl.NumberFormat('ru-RU', {
     style: 'currency',
-    currency: 'RUB',
+    currency: 'KZT',
     maximumFractionDigits: 0
   }).format(prize)
 }

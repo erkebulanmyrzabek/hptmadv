@@ -22,17 +22,17 @@
       />
       <ParticipantsTab 
         v-if="activeTab === 'participants'" 
-        :participants="participants"
+        :participants="hackathonData.participants || []"
       />
       <TeamsTab 
         v-if="activeTab === 'teams'" 
-        :teams="teams"
+        :teams="hackathonData.teams || []"
         @team-created="handleTeamCreated"
         @join-team="handleJoinTeam"
       />
       <TracksTab 
         v-if="activeTab === 'tracks'" 
-        :tracks="tracks"
+        :tracks="hackathonData.tracks || []"
       />
     </div>
 
@@ -40,7 +40,10 @@
     <div v-if="showRegistrationModal" class="modal-overlay" @click="closeRegistrationModal">
       <div class="modal-content" @click.stop>
         <h2>Регистрация на хакатон</h2>
-        <div class="registration-options">
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
+        <div v-if="!registrationStep" class="registration-options">
           <button class="option-btn team" @click="registerAsTeam">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -67,8 +70,11 @@
             id="team-code" 
             v-model="teamCode"
             placeholder="Например: TEAM123"
+            @input="clearError"
           />
-          <button class="submit-btn" @click="submitTeamCode">Присоединиться</button>
+          <button class="submit-btn" @click="submitTeamCode" :disabled="isJoiningTeam">
+            {{ isJoiningTeam ? 'Присоединяемся...' : 'Присоединиться' }}
+          </button>
         </div>
         <div v-if="registrationStep === 'create-team'" class="create-team-form">
           <label for="team-name">Название команды:</label>
@@ -77,11 +83,12 @@
             id="team-name" 
             v-model="teamName"
             placeholder="Введите название команды"
+            @input="clearError"
           />
-          <div class="team-code">
+          <div v-if="generatedTeamCode" class="team-code">
             Код для приглашения участников:
             <div class="code-display">
-              {{ generateTeamCode() }}
+              {{ generatedTeamCode }}
               <button type="button" class="copy-btn" @click="copyTeamCode">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="9" y="9" width="13" height="13" rx="2.18" ry="2.18"></rect>
@@ -90,7 +97,9 @@
               </button>
             </div>
           </div>
-          <button class="submit-btn" @click="submitTeamCreation">Создать команду</button>
+          <button class="submit-btn" @click="submitTeamCreation" :disabled="isCreatingTeam">
+            {{ isCreatingTeam ? 'Создаём...' : 'Создать команду' }}
+          </button>
         </div>
       </div>
     </div>
@@ -98,105 +107,27 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import GeneralInfo from '@/components/hackathon/GeneralInfo.vue'
 import ParticipantsTab from '@/components/hackathon/ParticipantsTab.vue'
 import TeamsTab from '@/components/hackathon/TeamsTab.vue'
 import TracksTab from '@/components/hackathon/TracksTab.vue'
+import apiClient from '@/api/axios'
 
 const route = useRoute()
+const router = useRouter()
 const activeTab = ref('general')
 const showRegistrationModal = ref(false)
 const registrationStep = ref('')
 const teamCode = ref('')
 const teamName = ref('')
+const generatedTeamCode = ref('')
 const isDarkTheme = ref(false)
-
-// Mock data for testing
-const hackathonData = ref({
-  id: '1',
-  title: 'Hack Platform 2024',
-  status: 'registration',
-  description: 'Крупнейший хакатон для разработчиков, дизайнеров и продакт-менеджеров',
-  coverImage: 'https://picsum.photos/1200/300',
-  startDate: '2024-04-15',
-  endDate: '2024-04-17',
-  registrationStart: '2024-03-15',
-  location: 'Москва, Технопарк "Сколково"',
-  prizePool: 1000000,
-  organizers: [
-    { id: 1, name: 'Tech Corp', logo: 'https://picsum.photos/50/50' },
-    { id: 2, name: 'Dev Inc', logo: 'https://picsum.photos/50/50' }
-  ],
-  judges: [
-    { 
-      id: 1, 
-      name: 'Иван Петров', 
-      position: 'CTO Tech Corp', 
-      avatar: 'https://picsum.photos/50/50' 
-    },
-    { 
-      id: 2, 
-      name: 'Анна Иванова', 
-      position: 'Product Director', 
-      avatar: 'https://picsum.photos/50/50' 
-    }
-  ],
-  schedule: [
-    {
-      id: 1,
-      time: '2024-04-15T10:00',
-      title: 'Открытие',
-      description: 'Приветственное слово организаторов'
-    },
-    {
-      id: 2,
-      time: '2024-04-15T11:00',
-      title: 'Начало работы',
-      description: 'Формирование команд и начало работы над проектами'
-    }
-  ],
-  rules: [
-    'Команда должна состоять из 2-5 человек',
-    'Все участники должны быть старше 18 лет',
-    'Проект должен соответствовать одному из предложенных треков',
-    'Использование готовых решений должно быть согласовано с организаторами'
-  ]
-})
-
-const participants = ref([
-  {
-    id: 1,
-    name: 'Алексей Иванов',
-    role: 'Full-stack разработчик',
-    team: 'CodeMasters',
-    stack: ['Vue.js', 'Node.js', 'MongoDB']
-  }
-])
-
-const teams = ref([
-  {
-    id: 1,
-    name: 'CodeMasters',
-    members: [
-      { id: 1, name: 'Алексей Иванов' }
-    ],
-    stack: ['Vue.js', 'Node.js', 'AI'],
-    status: 'open',
-    maxMembers: 5
-  }
-])
-
-const tracks = ref([
-  {
-    id: 1,
-    title: 'AI & ML',
-    description: 'Создание решений на основе искусственного интеллекта',
-    participants: 45,
-    teams: 15
-  }
-])
+const hackathonData = ref({})
+const errorMessage = ref('')
+const isCreatingTeam = ref(false)
+const isJoiningTeam = ref(false)
 
 const tabs = [
   {
@@ -221,6 +152,43 @@ const tabs = [
   }
 ]
 
+const validateHackathonData = (data) => {
+  const requiredFields = ['id', 'title', 'status', 'start_date', 'end_date', 'registration_start', 'location', 'prize_pool']
+  requiredFields.forEach(field => {
+    if (!(field in data)) {
+      console.warn(`Хакатон не содержит обязательное поле ${field}:`, data)
+    }
+  })
+  if (!Array.isArray(data.participants)) {
+    console.warn('Поле participants должно быть массивом:', data.participants)
+    data.participants = []
+  }
+  if (!Array.isArray(data.teams)) {
+    console.warn('Поле teams должно быть массивом:', data.teams)
+    data.teams = []
+  }
+  if (!Array.isArray(data.tracks)) {
+    console.warn('Поле tracks должно быть массивом:', data.tracks)
+    data.tracks = []
+  }
+  if (!Array.isArray(data.organizers)) {
+    console.warn('Поле organizers должно быть массивом:', data.organizers)
+    data.organizers = []
+  }
+  if (!Array.isArray(data.judges)) {
+    console.warn('Поле judges должно быть массивом:', data.judges)
+    data.judges = []
+  }
+  if (!Array.isArray(data.schedule)) {
+    console.warn('Поле schedule должно быть массивом:', data.schedule)
+    data.schedule = []
+  }
+  if (!Array.isArray(data.rules)) {
+    console.warn('Поле rules должно быть массивом:', data.rules)
+    data.rules = []
+  }
+}
+
 const setActiveTab = (tabId) => {
   activeTab.value = tabId
 }
@@ -235,70 +203,142 @@ const closeRegistrationModal = () => {
   registrationStep.value = ''
   teamCode.value = ''
   teamName.value = ''
+  generatedTeamCode.value = ''
+  errorMessage.value = ''
+  isCreatingTeam.value = false
+  isJoiningTeam.value = false
+}
+
+const clearError = () => {
+  errorMessage.value = ''
 }
 
 const registerAsTeam = () => {
   registrationStep.value = 'create-team'
+  generatedTeamCode.value = ''
 }
 
 const joinTeam = () => {
   registrationStep.value = 'join-team'
 }
 
-const generateTeamCode = () => {
-  // Генерация уникального кода команды
-  return 'TEAM' + Math.random().toString(36).substring(2, 8).toUpperCase()
-}
-
 const copyTeamCode = () => {
-  const code = generateTeamCode()
-  navigator.clipboard.writeText(code)
-  // Показать уведомление об успешном копировании
+  if (!generatedTeamCode.value) {
+    console.warn('Попытка скопировать пустой код команды.')
+    return
+  }
+  navigator.clipboard.writeText(generatedTeamCode.value)
+    .then(() => {
+      alert('Код скопирован!')
+      console.log('Код команды скопирован:', generatedTeamCode.value)
+    })
+    .catch(err => {
+      console.error('Ошибка при копировании кода:', err)
+      alert('Не удалось скопировать код.')
+    })
 }
 
-const submitTeamCode = () => {
-  if (!teamCode.value) return
-  // Отправка запроса на сервер для проверки кода команды
-  console.log('Присоединение к команде:', teamCode.value)
-  showRegistrationModal.value = false
+const submitTeamCode = async () => {
+  if (!teamCode.value.trim()) {
+    errorMessage.value = 'Введите код команды.'
+    console.warn('Попытка присоединиться к команде без кода.')
+    return
+  }
+
+  isJoiningTeam.value = true
+  errorMessage.value = ''
+  try {
+    const response = await apiClient.post(`/api/hackathons/${route.params.id}/join-team/`, { teamCode: teamCode.value })
+    console.log('Успешно присоединились к команде:', response.data)
+    handleJoinTeam(response.data.id)
+    closeRegistrationModal()
+  } catch (error) {
+    const errorMsg = error.response?.data?.error || 'Не удалось присоединиться к команде. Попробуйте позже.'
+    errorMessage.value = errorMsg
+    console.error('Ошибка при присоединении к команде:', errorMsg, error)
+    if (error.response?.status === 401) {
+      router.push('/login')
+    }
+  } finally {
+    isJoiningTeam.value = false
+  }
 }
 
-const submitTeamCreation = () => {
-  if (!teamName.value) return
-  // Отправка запроса на сервер для создания команды
-  console.log('Создание команды:', teamName.value)
-  showRegistrationModal.value = false
+const submitTeamCreation = async () => {
+  if (!teamName.value.trim()) {
+    errorMessage.value = 'Введите название команды.'
+    console.warn('Попытка создать команду без названия.')
+    return
+  }
+
+  isCreatingTeam.value = true
+  errorMessage.value = ''
+  try {
+    const response = await apiClient.post(`/api/hackathons/${route.params.id}/create-team/`, {
+      name: teamName.value,
+      stack: ['Unknown']
+    })
+    generatedTeamCode.value = response.data.invite_code
+    console.log('Команда успешно создана:', response.data)
+    handleTeamCreated(response.data)
+  } catch (error) {
+    const errorMsg = error.response?.data?.error || 'Не удалось создать команду. Попробуйте позже.'
+    errorMessage.value = errorMsg
+    console.error('Ошибка при создании команды:', errorMsg, error)
+    if (error.response?.status === 401) {
+      router.push('/login')
+    }
+  } finally {
+    isCreatingTeam.value = false
+  }
 }
 
 const handleTeamCreated = (team) => {
-  teams.value.push(team)
+  if (!hackathonData.value.teams) {
+    hackathonData.value.teams = []
+  }
+  hackathonData.value.teams.push(team)
+  console.log('Команда добавлена в список:', team)
 }
 
 const handleJoinTeam = (teamId) => {
-  console.log('Joining team:', teamId)
+  console.log('Присоединились к команде с ID:', teamId)
+  loadHackathonData()
+}
+
+const loadHackathonData = async () => {
+  try {
+    const response = await apiClient.get(`/api/hackathons/${route.params.id}/`)
+    if (!response.data || typeof response.data !== 'object') {
+      throw new Error('API вернуло некорректные данные: ожидался объект.')
+    }
+    hackathonData.value = response.data
+    validateHackathonData(hackathonData.value)
+    console.log('Данные хакатона загружены:', hackathonData.value)
+  } catch (error) {
+    console.error('Ошибка при загрузке данных хакатона:', error)
+    if (error.response?.status === 401) {
+      router.push('/login')
+    }
+    hackathonData.value = {}
+  }
 }
 
 onMounted(() => {
-  // Загрузка данных хакатона
-  const loadHackathonData = async () => {
-    try {
-      // Здесь будет API запрос
-      // const response = await fetch(`/api/hackathons/${route.params.id}`)
-      // hackathonData.value = await response.json()
-      
-      // Проверяем хэш для автоматического открытия модального окна
-      if (route.hash === '#registration') {
-        openRegistrationModal()
-      }
-    } catch (error) {
-      console.error('Ошибка при загрузке данных:', error)
-    }
+  // Проверяем, авторизован ли пользователь
+  const accessToken = localStorage.getItem('access_token')
+  if (!accessToken) {
+    console.warn('Пользователь не авторизован. Перенаправляем на страницу логина.')
+    router.push('/login')
+    return
   }
-  
+  apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
   loadHackathonData()
+  if (route.hash === '#registration') {
+    openRegistrationModal()
+  }
 })
 
-// Следим за изменением хэша
 watch(() => route.hash, (newHash) => {
   if (newHash === '#registration') {
     openRegistrationModal()
@@ -307,6 +347,7 @@ watch(() => route.hash, (newHash) => {
 </script>
 
 <style scoped>
+/* Стили остаются без изменений */
 .hackathon-details-view {
   padding: 20px;
   margin-bottom: 70px;
@@ -405,6 +446,15 @@ watch(() => route.hash, (newHash) => {
   margin: 0 0 24px;
   font-size: 24px;
   color: var(--text-primary);
+}
+
+.error-message {
+  color: var(--error-color);
+  background: var(--error-color-light);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 14px;
 }
 
 .registration-options {
@@ -534,6 +584,11 @@ watch(() => route.hash, (newHash) => {
   background: var(--primary-color-dark);
 }
 
+.submit-btn:disabled {
+  background: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
 /* Dark Theme */
 .dark-theme {
   --surface-color: #1a1a1a;
@@ -543,5 +598,7 @@ watch(() => route.hash, (newHash) => {
   --text-secondary: #b3b3b3;
   --text-tertiary: #808080;
   --border-color: #404040;
+  --error-color: #ff5555;
+  --error-color-light: #ff555522;
 }
 </style>

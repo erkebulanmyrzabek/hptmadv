@@ -5,7 +5,7 @@
         <div class="avatar" :style="{ backgroundColor: getAvatarColor() }">
           {{ getUserInitials() }}
         </div>
-        <h2>{{ user.name }}</h2>
+        <h2>{{ user?.first_name || 'Гость' }} {{ user?.last_name || '' }}</h2>
       </div>
       <div class="notifications-wrapper">
         <button class="notifications-button" @click="toggleNotifications">
@@ -27,10 +27,10 @@
           </div>
           <div class="notifications-list">
             <div v-for="notification in notifications" 
-                :key="notification.id"
-                class="notification-item"
-                :class="{ unread: !notification.read }"
-                @click="markAsRead(notification.id)">
+                 :key="notification.id"
+                 class="notification-item"
+                 :class="{ unread: !notification.read }"
+                 @click="markAsRead(notification.id)">
               <div class="notification-icon" :class="notification.type">
                 <svg v-if="notification.type === 'success'" width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -67,7 +67,7 @@
                 class="event-card"
                 @click="router.push(`/hackathons/${event.id}`)"
               >
-                <div class="event-image" :style="{ backgroundImage: `url(${event.backgroundImage || getDefaultBackground(event.type)})` }">
+                <div class="event-image" :style="{ backgroundImage: `url(${event.cover_image || getDefaultBackground(event.type)})` }">
                   <div class="event-overlay">
                     <div class="event-header">
                       <span class="event-status" :class="event.status">
@@ -83,13 +83,13 @@
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                         <path d="M8 7V3M16 7V3M7 11H17M5 21H19C20.1046 21 21 20.1046 21 19V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V19C3 20.1046 3.89543 21 5 21Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                       </svg>
-                      {{ formatDate(event.date) }}
+                      {{ formatDate(event.start_date) }}
                     </span>
                     <span class="event-participants">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                         <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1614 16.5523C21.6184 15.8519 20.8581 15.3516 20 15.13M16 3.13C16.8604 3.3503 17.623 3.8507 18.1676 4.55231C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89317 18.7122 8.75608 18.1676 9.45769C17.623 10.1593 16.8604 10.6597 16 10.88M13 7C13 9.20914 11.2091 11 9 11C6.79086 11 5 9.20914 5 7C5 4.79086 6.79086 3 9 3C11.2091 3 13 4.79086 13 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                       </svg>
-                      {{ event.participants }}
+                      {{ event.participants?.length || 0 }}
                     </span>
                   </div>
                   <div class="event-tags">
@@ -97,13 +97,13 @@
                       {{ tag }}
                     </span>
                   </div>
-                  <div v-if="event.prize" class="event-prize">
+                  <div v-if="event.prize_pool" class="event-prize">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <path d="M12 15C8.13401 15 5 11.866 5 8V7C5 6.44772 5.44772 6 6 6H18C18.5523 6 19 6.44772 19 7V8C19 11.866 15.866 15 12 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                       <path d="M8.5 14.5V17C8.5 17 8.5 19 12 19C15.5 19 15.5 17 15.5 17V14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                       <path d="M19 8H20C21.1046 8 22 7.10457 22 6V5C22 3.89543 21.1046 3 20 3H4C2.89543 3 2 3.89543 2 5V6C2 7.10457 2.89543 8 4 8H5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    {{ event.prize }}
+                    {{ event.prize_pool }} ₸
                   </div>
                 </div>
               </div>
@@ -210,8 +210,6 @@
         </div>
       </section>
     </main>
-
-    <!-- Notifications popup -->
   </div>
 </template>
 
@@ -219,11 +217,25 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
-import { TransitionGroup } from 'vue'
+import apiClient from '@/api/axios'
 
-const { theme, toggleTheme } = useTheme()
-
+const { theme } = useTheme()
 const router = useRouter()
+
+// Пользователь
+const user = ref(null)
+
+// Загрузка данных пользователя из localStorage
+const loadUser = () => {
+  const storedUser = localStorage.getItem('user')
+  if (storedUser) {
+    user.value = JSON.parse(storedUser)
+    console.log('Данные пользователя загружены:', user.value)
+  } else {
+    console.warn('Данные пользователя отсутствуют в localStorage.')
+    router.push('/login')
+  }
+}
 
 // Categories
 const categories = [
@@ -232,152 +244,28 @@ const categories = [
   { id: 'cases', name: 'Кейс-чемпионаты', icon: 'case' }
 ]
 
-// Events
-const events = ref([
-  // Хакатоны
-  {
-    id: 1,
-    title: 'AI Хакатон 2025',
-    type: 'hackathons',
-    status: 'upcoming',
-    date: '2025-03-20',
-    participants: 128,
-    tags: ['Python', 'AI/ML', 'Computer Vision'],
-    prize: '1 000 000 ₸',
-    backgroundImage: '/images/event1.jpg'
-  },
-  {
-    id: 2,
-    title: 'Mobile Dev Hack',
-    type: 'hackathons',
-    status: 'active',
-    date: '2025-03-17',
-    participants: 96,
-    tags: ['React Native', 'Flutter', 'Mobile'],
-    prize: '500 000 ₸',
-    backgroundImage: '/images/event2.jpg'
-  },
-  {
-    id: 3,
-    title: 'GameDev Hackathon',
-    type: 'hackathons',
-    status: 'upcoming',
-    date: '2025-03-25',
-    participants: 64,
-    tags: ['Unity', 'Unreal Engine', 'C#'],
-    prize: '750 000 ₸',
-    backgroundImage: '/images/event3.jpg'
-  },
-  {
-    id: 4,
-    title: 'Web3 Hack',
-    type: 'hackathons',
-    status: 'upcoming',
-    date: '2025-03-30',
-    participants: 80,
-    tags: ['Blockchain', 'Smart Contracts', 'DeFi'],
-    prize: '800 000 ₸',
-    backgroundImage: '/images/event4.jpg'
-  },
+// Events (будут загружаться с бэкенда)
+const events = ref([])
 
-  // Вебинары
-  {
-    id: 5,
-    title: 'Web3 Development',
-    type: 'webinars',
-    status: 'active',
-    date: '2025-03-17',
-    participants: 256,
-    tags: ['Blockchain', 'Smart Contracts'],
-    speaker: 'Виталик Бутерин',
-    backgroundImage: '/images/event5.jpg'
-  },
-  {
-    id: 6,
-    title: 'Cloud Computing',
-    type: 'webinars',
-    status: 'upcoming',
-    date: '2025-03-22',
-    participants: 180,
-    tags: ['AWS', 'Azure', 'DevOps'],
-    speaker: 'Джефф Безос',
-    backgroundImage: '/images/event6.jpg'
-  },
-  {
-    id: 7,
-    title: 'Machine Learning',
-    type: 'webinars',
-    status: 'upcoming',
-    date: '2025-03-24',
-    participants: 150,
-    tags: ['Python', 'TensorFlow', 'Deep Learning'],
-    speaker: 'Ян ЛеКун',
-    backgroundImage: '/images/event7.jpg'
-  },
-  {
-    id: 8,
-    title: 'Mobile Development',
-    type: 'webinars',
-    status: 'upcoming',
-    date: '2025-03-26',
-    participants: 120,
-    tags: ['iOS', 'Android', 'Cross-platform'],
-    speaker: 'Крис Латтнер',
-    backgroundImage: '/images/event8.jpg'
-  },
-
-  // Кейс-чемпионаты
-  {
-    id: 9,
-    title: 'Green Energy Case',
-    type: 'cases',
-    status: 'upcoming',
-    date: '2025-03-25',
-    participants: 64,
-    tags: ['Sustainability', 'Innovation'],
-    company: 'GreenTech',
-    backgroundImage: '/images/event9.jpg'
-  },
-  {
-    id: 10,
-    title: 'FinTech Innovation',
-    type: 'cases',
-    status: 'active',
-    date: '2025-03-19',
-    participants: 75,
-    tags: ['Finance', 'Blockchain', 'AI'],
-    company: 'Tinkoff',
-    backgroundImage: '/images/event10.jpg'
-  },
-  {
-    id: 11,
-    title: 'Smart City',
-    type: 'cases',
-    status: 'upcoming',
-    date: '2025-03-28',
-    participants: 90,
-    tags: ['IoT', 'Big Data', 'Urban Planning'],
-    company: 'Siemens',
-    backgroundImage: '/images/event11.jpg'
-  },
-  {
-    id: 12,
-    title: 'E-commerce Future',
-    type: 'cases',
-    status: 'upcoming',
-    date: '2025-03-31',
-    participants: 85,
-    tags: ['Retail', 'Digital Marketing', 'UX'],
-    company: 'Ozon',
-    backgroundImage: '/images/event12.jpg'
+// Загрузка событий (хакатонов) с бэкенда
+const loadEvents = async () => {
+  try {
+    const response = await apiClient.get('/api/hackathons/')
+    events.value = response.data.map(event => ({
+      ...event,
+      type: 'hackathons', // Пока поддерживаем только хакатоны
+      tags: event.tags || ['Unknown'] // Если теги не приходят с бэкенда, добавляем заглушку
+    }))
+    console.log('Список событий загружен:', events.value)
+  } catch (error) {
+    console.error('Ошибка при загрузке событий:', error)
+    if (error.response?.status === 401) {
+      router.push('/login')
+    }
   }
-])
+}
 
-// Search and filter functionality
-const searchQuery = ref('')
-const selectedTags = ref([])
-
-// Formatting functions
+// Форматирование дат
 const formatDate = (date) => {
   const options = { day: 'numeric', month: 'long' }
   return new Date(date).toLocaleDateString('ru-RU', options)
@@ -397,65 +285,66 @@ const formatNotificationTime = (time) => {
   return 'только что'
 }
 
-const formatStatus = (status) => {
-  const statusMap = {
-    'upcoming': 'Скоро',
-    'active': 'Идет сейчас',
-    'finished': 'Завершен'
+// Статусы
+const getStatusLabel = (status) => {
+  const labels = {
+    active: 'Идет сейчас',
+    upcoming: 'Скоро',
+    finished: 'Завершен',
+    registration: 'Регистрация'
   }
-  return statusMap[status] || status
+  return labels[status] || status
 }
 
-// Event filtering and search
-const isFilteredOut = (event) => {
-  const query = searchQuery.value.toLowerCase()
-  const tags = selectedTags.value
-  
-  const matchesQuery = event.title.toLowerCase().includes(query) ||
-                      event.type.toLowerCase().includes(query) ||
-                      event.tags.some(tag => tag.toLowerCase().includes(query))
-  
-  const matchesTags = tags.length === 0 || 
-                     tags.every(tag => event.tags.includes(tag))
-  
-  return !(matchesQuery && matchesTags)
+// Аватар пользователя
+const getAvatarColor = () => {
+  const colors = ['#3498db', '#f1c40f', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c']
+  const name = user.value?.first_name || 'Гость'
+  const hash = name.split('').reduce((acc, char) => {
+    return char.charCodeAt(0) + ((acc << 5) - acc)
+  }, 0)
+  return colors[Math.abs(hash) % colors.length]
 }
 
-const filterEvents = () => {
-  return events.value.filter(event => !isFilteredOut(event))
+const getUserInitials = () => {
+  const name = user.value?.first_name || 'Гость'
+  return name.split(' ').map(word => word[0]).join('')
 }
 
-// Color functions
-const getEventTypeColor = (type) => {
-  const colors = {
-    hackathons: '#6366F1',
-    webinars: '#10B981',
-    cases: '#F59E0B'
+// События по категориям
+const getEventsByCategory = (categoryId) => {
+  return events.value.filter(event => event.type === categoryId)
+}
+
+// Уведомления (пока статические, можно интегрировать с бэкендом позже)
+const showNotifications = ref(false)
+const notifications = ref([
+  {
+    id: 1,
+    type: 'success',
+    text: 'Вы успешно зарегистрировались на хакатон AI Challenge 2025!',
+    time: '2025-03-17T05:30:00',
+    read: false
+  },
+  {
+    id: 2,
+    type: 'info',
+    text: 'Новый вебинар по Web3 начнется через 2 часа',
+    time: '2025-03-17T05:40:00',
+    read: false
+  },
+  {
+    id: 3,
+    type: 'warning',
+    text: 'Срок регистрации на кейс-чемпионат заканчивается завтра',
+    time: '2025-03-17T05:45:00',
+    read: true
   }
-  return colors[type] || '#6B7280'
-}
+])
 
-const getNewsColor = (type) => {
-  const colors = {
-    announcement: '#6366F1',
-    update: '#2ECC71',
-    event: '#F59E0B'
-  }
-  return colors[type] || '#6B7280'
-}
-
-// Navigation and interaction
-const navigateToEvent = (id) => {
-  router.push(`/hackathons/${id}`)
-}
-
-const openNews = (news) => {
-  // Implement news opening logic
-}
-
-const viewAllNews = () => {
-  // Implement view all news logic
-}
+const unreadNotificationsCount = computed(() => {
+  return notifications.value.filter(n => !n.read).length
+})
 
 const toggleNotifications = () => {
   showNotifications.value = !showNotifications.value
@@ -465,63 +354,54 @@ const closeNotifications = () => {
   showNotifications.value = false
 }
 
-// Helper functions
-const getRandomDelay = () => {
-  return Math.random() * 0.3 // Случайная задержка до 0.3 секунды
-}
-
-// User data and functions
-const user = ref({
-  name: 'Сейтжанов Темирлан',
-  level: 42,
-  rating: 1250,
-  avatar: null,
-  achievements: ['🏆', '⭐', '🚀']
-})
-
-const getAvatarColor = () => {
-  const colors = ['#3498db', '#f1c40f', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c']
-  const hash = user.value.name.split('').reduce((acc, char) => {
-    return char.charCodeAt(0) + ((acc << 5) - acc)
-  }, 0)
-  return colors[Math.abs(hash) % colors.length]
-}
-
-const getUserInitials = () => {
-  const name = user.value.name
-  return name.split(' ').map(word => word[0]).join('')
-}
-
-// Computed property for filtered events
-const filteredEvents = computed(() => {
-  if (!searchQuery.value && selectedTags.value.length === 0) {
-    return events.value
+const markAsRead = (id) => {
+  const notification = notifications.value.find(n => n.id === id)
+  if (notification) {
+    notification.read = true
   }
-  return filterEvents()
-})
-
-// Events by category
-const getEventsByCategory = (categoryId) => {
-  return events.value.filter(event => event.type === categoryId)
 }
 
-// Filter events by category
-const filteredEventsByCategory = computed(() => {
-  const events = filteredEvents.value
-  if (activeCategory.value === 'all') return events
-  return events.filter(event => event.type === activeCategory.value.slice(0, -1))
-})
+// Скролл для категорий
+const categoryScrollRefs = ref({})
+const categoryScrollStates = ref({})
 
-// Get all unique tags
-const allTags = computed(() => {
-  const tags = new Set()
-  events.value.forEach(event => {
-    event.tags.forEach(tag => tags.add(tag))
+const updateCategoryScrollState = (categoryId) => {
+  const container = categoryScrollRefs.value[categoryId]
+  if (!container) return
+  
+  categoryScrollStates.value[categoryId] = {
+    canScrollLeft: container.scrollLeft > 0,
+    canScrollRight: container.scrollLeft < (container.scrollWidth - container.clientWidth)
+  }
+}
+
+const canScrollLeft = (categoryId) => categoryScrollStates.value[categoryId]?.canScrollLeft
+const canScrollRight = (categoryId) => categoryScrollStates.value[categoryId]?.canScrollRight
+
+const scrollCategory = (direction, categoryId) => {
+  const container = categoryScrollRefs.value[categoryId]
+  if (!container) return
+  
+  const scrollAmount = container.clientWidth * 0.8
+  const targetScroll = container.scrollLeft + (direction === 'right' ? scrollAmount : -scrollAmount)
+  
+  container.scrollTo({
+    left: targetScroll,
+    behavior: 'smooth'
   })
-  return Array.from(tags)
-})
+}
 
-// News
+// Фон по умолчанию для событий
+const getDefaultBackground = (type) => {
+  const backgrounds = {
+    hackathons: '/images/default-hackathon.jpg',
+    webinars: '/images/default-webinar.jpg',
+    cases: '/images/default-case.jpg'
+  }
+  return backgrounds[type] || backgrounds.hackathons
+}
+
+// Новости (пока статические, можно интегрировать с бэкендом позже)
 const newsItems = ref([
   {
     id: 1,
@@ -532,10 +412,7 @@ const newsItems = ref([
     image: '/images/ai-hackathon.jpg',
     likes: 42,
     isLiked: false,
-    isFavorite: false,
-    hasDeadline: true,
-    hasReminder: false,
-    deadline: '2025-03-19'
+    comments: 10
   },
   {
     id: 2,
@@ -546,8 +423,7 @@ const newsItems = ref([
     image: null,
     likes: 28,
     isLiked: false,
-    isFavorite: false,
-    hasDeadline: false
+    comments: 5
   },
   {
     id: 3,
@@ -558,10 +434,7 @@ const newsItems = ref([
     image: '/images/web3-meetup.jpg',
     likes: 35,
     isLiked: false,
-    isFavorite: false,
-    hasDeadline: true,
-    hasReminder: false,
-    deadline: '2025-03-20'
+    comments: 8
   }
 ])
 
@@ -578,12 +451,12 @@ const newsSearchQuery = ref('')
 const filteredNews = computed(() => {
   let filtered = newsItems.value
 
-  // Apply type filter
+  // Фильтрация по типу
   if (currentNewsFilter.value !== 'all') {
     filtered = filtered.filter(news => news.type === currentNewsFilter.value)
   }
 
-  // Apply search filter
+  // Фильтрация по поисковому запросу
   if (newsSearchQuery.value) {
     const query = newsSearchQuery.value.toLowerCase()
     filtered = filtered.filter(news => 
@@ -626,18 +499,18 @@ const toggleLike = (newsId) => {
 }
 
 const openComments = (news) => {
-  // Implement comments opening logic
+  console.log('Открыть комментарии для новости:', news)
+  // Реализовать логику открытия комментариев
 }
 
 const shareNews = (news) => {
-  // Implementation for sharing functionality
   const url = `${window.location.origin}/news/${news.id}`
   navigator.clipboard.writeText(url)
     .then(() => {
-      // Show success message
+      alert('Ссылка скопирована!')
     })
     .catch(() => {
-      // Show error message
+      alert('Не удалось скопировать ссылку.')
     })
 }
 
@@ -645,115 +518,22 @@ const openNewsDetails = (news) => {
   router.push(`/news/${news.id}`)
 }
 
-// Notifications
-const showNotifications = ref(false)
-const activeCategory = ref('all')
-const notifications = ref([
-  {
-    id: 1,
-    type: 'success',
-    text: 'Вы успешно зарегистрировались на хакатон AI Challenge 2025!',
-    time: '2025-03-17T05:30:00',
-    read: false
-  },
-  {
-    id: 2,
-    type: 'info',
-    text: 'Новый вебинар по Web3 начнется через 2 часа',
-    time: '2025-03-17T05:40:00',
-    read: false
-  },
-  {
-    id: 3,
-    type: 'warning',
-    text: 'Срок регистрации на кейс-чемпионат заканчивается завтра',
-    time: '2025-03-17T05:45:00',
-    read: true
-  }
-])
-
-const unreadNotificationsCount = computed(() => {
-  return notifications.value.filter(n => !n.read).length
-})
-
-const markAsRead = (id) => {
-  const notification = notifications.value.find(n => n.id === id)
-  if (notification) {
-    notification.read = true
-  }
-}
-
-// Scroll functionality
-const categoryScrollRefs = ref({})
-const categoryScrollStates = ref({})
-
-const updateCategoryScrollState = (categoryId) => {
-  const container = categoryScrollRefs.value[categoryId]
-  if (!container) return
-  
-  categoryScrollStates.value[categoryId] = {
-    canScrollLeft: container.scrollLeft > 0,
-    canScrollRight: container.scrollLeft < (container.scrollWidth - container.clientWidth)
-  }
-}
-
-const canScrollLeft = (categoryId) => categoryScrollStates.value[categoryId]?.canScrollLeft
-const canScrollRight = (categoryId) => categoryScrollStates.value[categoryId]?.canScrollRight
-
-const scrollCategory = (direction, categoryId) => {
-  const container = categoryScrollRefs.value[categoryId]
-  if (!container) return
-  
-  const scrollAmount = container.clientWidth * 0.8
-  const targetScroll = container.scrollLeft + (direction === 'right' ? scrollAmount : -scrollAmount)
-  
-  container.scrollTo({
-    left: targetScroll,
-    behavior: 'smooth'
-  })
-}
-
-// Event type styles
-const getEventTypeStyle = (type) => {
-  const colors = {
-    hackathons: '#6366F1',
-    webinars: '#10B981',
-    cases: '#F59E0B'
-  }
-  return { backgroundColor: colors[type] }
-}
-
-const getEventTypeLabel = (type) => {
-  const labels = {
-    hackathons: 'Хакатон',
-    webinars: 'Вебинар',
-    cases: 'Кейс'
-  }
-  return labels[type]
-}
-
-// Status labels
-const getStatusLabel = (status) => {
-  const labels = {
-    active: 'Идет сейчас',
-    upcoming: 'Скоро',
-    finished: 'Завершен'
-  }
-  return labels[status]
-}
-
-// Default background images
-const getDefaultBackground = (type) => {
-  const backgrounds = {
-    hackathons: '/images/default-hackathon.jpg',
-    webinars: '/images/default-webinar.jpg',
-    cases: '/images/default-case.jpg'
-  }
-  return backgrounds[type] || backgrounds.hackathons
-}
-
 // Lifecycle hooks
 onMounted(() => {
+  // Проверяем авторизацию
+  const accessToken = localStorage.getItem('access_token')
+  if (!accessToken) {
+    console.warn('Пользователь не авторизован. Перенаправляем на страницу логина.')
+    router.push('/login')
+    return
+  }
+  apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
+
+  // Загружаем данные
+  loadUser()
+  loadEvents()
+
+  // Инициализация скролла для категорий
   Object.keys(categoryScrollRefs.value).forEach(categoryId => {
     const container = categoryScrollRefs.value[categoryId]
     if (container) {
@@ -771,8 +551,15 @@ onMounted(() => {
   --surface-color-hover: #e5e7eb;
   --text-primary: #111827;
   --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
   --primary-color: #6366f1;
+  --primary-color-dark: #4f46e5;
   --border-color: #e5e7eb;
+  --color-success: #10B981;
+  --color-info: #6366F1;
+  --color-error: #EF4444;
+  --card-bg: #ffffff;
+  --tag-bg: #e5e7eb;
 }
 
 [data-theme="dark"] {
@@ -781,8 +568,15 @@ onMounted(() => {
   --surface-color-hover: #374151;
   --text-primary: #f9fafb;
   --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
   --primary-color: #818cf8;
+  --primary-color-dark: #6366f1;
   --border-color: #374151;
+  --color-success: #34D399;
+  --color-info: #818CF8;
+  --color-error: #F87171;
+  --card-bg: #1f2937;
+  --tag-bg: #374151;
 }
 
 .home-view {
@@ -1075,11 +869,11 @@ onMounted(() => {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
+}
 
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
-  }
+.event-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
 }
 
 .event-image {
@@ -1100,11 +894,6 @@ onMounted(() => {
   padding: 16px;
 }
 
-.event-content {
-  padding: 16px;
-  background: var(--card-bg);
-}
-
 .event-header {
   display: flex;
   justify-content: space-between;
@@ -1118,18 +907,27 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 500;
   background: rgba(255, 255, 255, 0.9);
+}
 
-  &.upcoming {
-    color: var(--color-info);
-  }
+.event-status.upcoming {
+  color: var(--color-info);
+}
 
-  &.active {
-    color: var(--color-success);
-  }
+.event-status.active {
+  color: var(--color-success);
+}
 
-  &.ended {
-    color: var(--color-error);
-  }
+.event-status.registration {
+  color: #F59E0B;
+}
+
+.event-status.completed {
+  color: var(--color-error);
+}
+
+.event-content {
+  padding: 16px;
+  background: var(--card-bg);
 }
 
 .event-content h3 {
@@ -1146,16 +944,16 @@ onMounted(() => {
   margin-bottom: 12px;
   font-size: 14px;
   color: var(--text-secondary);
+}
 
-  span {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+.event-info span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
-    svg {
-      color: var(--text-tertiary);
-    }
-  }
+.event-info svg {
+  color: var(--text-tertiary);
 }
 
 .event-tags {
@@ -1163,14 +961,14 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
+}
 
-  .tag {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    background: var(--tag-bg);
-    color: var(--text-secondary);
-  }
+.event-tags .tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--tag-bg);
+  color: var(--text-secondary);
 }
 
 .event-prize {
@@ -1180,10 +978,10 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 600;
   color: var(--color-success);
+}
 
-  svg {
-    color: var(--color-success);
-  }
+.event-prize svg {
+  color: var(--color-success);
 }
 
 @media (min-width: 768px) {
