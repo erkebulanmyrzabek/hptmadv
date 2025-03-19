@@ -1,130 +1,141 @@
 from django.db import models
+import random
+import string
 from django.utils import timezone
-from django.core.exceptions import ValidationError
-from apps.users.models import Participant
-from admin_panel.models import Organization 
 
+# Модель Хакатона
 class Hackathon(models.Model):
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='hackathons')
-    title = models.CharField(max_length=255)
-    status = models.CharField(
-        max_length=20,
-        choices=[
-            ('archived', 'Архив'),
-            ('anounce', 'Анонс'),
-            ('registration', 'Регистрация'),
-            ('in_progress', 'В процессе'),
-            ('finished', 'Завершен'),
-            ('results_announced', 'Результаты объявлены'),  # Новый статус
-        ],
-        default='archived'
+    STATUS_CHOICES = (
+        ('registration', 'Регистрация'),
+        ('active', 'Активен'),
+        ('completed', 'Завершён'),
     )
-    type = models.CharField(
-        max_length=20,
-        choices=[('online', 'Онлайн'), ('offline', 'Офлайн'), ('hybrid', 'Гибрид')],
-        default='online'
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        ordering = ['-created_at']
+    id = models.CharField(max_length=50, primary_key=True, unique=True)  # Уникальный строковый ID
+    title = models.CharField(max_length=255)  # Название хакатона
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='registration')
+    description = models.TextField()  # Описание
+    cover_image = models.URLField(max_length=500, blank=True, null=True)  # URL обложки
+    start_date = models.DateTimeField()  # Дата начала
+    end_date = models.DateTimeField()  # Дата окончания
+    registration_start = models.DateTimeField()  # Начало регистрации
+    location = models.CharField(max_length=255)  # Место проведения
+    prize_pool = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)  # Призовой фонд
+    created_at = models.DateTimeField(auto_now_add=True)  # Дата создания
+    updated_at = models.DateTimeField(auto_now=True)  # Дата обновления
 
     def __str__(self):
         return self.title
-    
-class HackathonDetails(models.Model):
-    hackathon = models.OneToOneField(Hackathon, on_delete=models.CASCADE, related_name='details')
-    short_description = models.TextField(null=True, blank=True)
-    full_description = models.TextField(null=True, blank=True)
-    preview_image = models.URLField(null=True, blank=True)
-    banner_image = models.URLField(null=True, blank=True)
-    faq = models.TextField(null=True, blank=True)
-    rules = models.TextField(null=True, blank=True)
 
-    def __str__(self):
-        return f"Детали для {self.hackathon.title}"
-    
-class HackathonSchedule(models.Model):
-    hackathon = models.OneToOneField(Hackathon, on_delete=models.CASCADE, related_name='schedule')
-    registration_start_date = models.DateTimeField(null=True, blank=True)
-    registration_end_date = models.DateTimeField(null=True, blank=True)
-    start_date = models.DateTimeField(null=True, blank=True)
-    end_date = models.DateTimeField(null=True, blank=True)
-
-    def clean(self):
-        if self.registration_start_date and self.registration_end_date and self.registration_start_date > self.registration_end_date:
-            raise ValidationError("Дата начала регистрации не может быть позже даты окончания.")
-        if self.start_date and self.end_date and self.start_date > self.end_date:
-            raise ValidationError("Дата начала хакатона не может быть позже даты окончания.")
-
-    def __str__(self):
-        return f"Расписание для {self.hackathon.title}"
-    
-
-class HackathonLocation(models.Model):
-    hackathon = models.OneToOneField(Hackathon, on_delete=models.CASCADE, related_name='location')
-    location = models.CharField(max_length=255, null=True, blank=True)
-    address = models.CharField(max_length=255, null=True, blank=True)
-
-    def __str__(self):
-        return f"Местоположение для {self.hackathon.title}"
-    
-    
-class HackathonPrizePlace(models.Model):
-    hackathon = models.ForeignKey(Hackathon, on_delete=models.CASCADE, related_name='hackathon_prizes')
-    place = models.IntegerField(help_text="Номер призового места (1, 2, 3 и т.д.)")
-    number_of_winners = models.PositiveIntegerField(
-        default=1,
-        help_text="Количество победителей на данном месте"
-    )
-    prize_amount = models.IntegerField(
-        null=True, 
-        blank=True, 
-        help_text="Сумма приза в валюте или баллах"
-    )
-    xp_reward = models.PositiveIntegerField(
-        default=0,
-        help_text="Количество XP за это место"
-    )
-    winners = models.ManyToManyField(
-        'users.Participant',
-        blank=True,
-        related_name='hackathon_prizes_won',
-        help_text="Победители этого места"
-    )
-    winner_teams = models.ManyToManyField(
-        'community.Team',
-        blank=True,
-        related_name='hackathon_prizes_won',
-        help_text="Команды-победители этого места"
-    )
+    def is_registration_open(self):
+        """Проверка, открыта ли регистрация."""
+        now = timezone.now()
+        return self.registration_start <= now < self.start_date and self.status == 'registration'
 
 
-    class Meta:
-        unique_together = ('hackathon', 'place')
-        ordering = ['place']
-
-    def __str__(self):
-        winners_count = self.winners.count() + self.winner_teams.count()
-        return f"{self.place} место (квота: {self.number_of_winners}, занято: {winners_count}) - {self.prize_amount or 0}₸, {self.xp_reward}XP"
-
-
-class Tag(models.Model):
-    name = models.CharField(max_length=255)
-    hackathons = models.ManyToManyField(Hackathon, blank=True, related_name='tags')
+# Модель Организатора
+class HackathonOrganizer(models.Model):
+    hackathon = models.ForeignKey(Hackathon, on_delete=models.CASCADE, related_name='organizers')
+    name = models.CharField(max_length=255)  # Название компании
+    logo = models.URLField(max_length=500, blank=True, null=True)  # URL логотипа
 
     def __str__(self):
         return self.name
 
-class HackathonParticipants(models.Model):
-    hackathon = models.OneToOneField(Hackathon, on_delete=models.CASCADE, related_name='participants_info')
-    max_participants = models.IntegerField(null=True, blank=True)
-    
-    def current_participants(self):
-        return sum(team.members.count() for team in self.hackathon.teams.all())
+
+# Модель Судьи
+class HackathonJudge(models.Model):
+    hackathon = models.ForeignKey(Hackathon, on_delete=models.CASCADE, related_name='judges')
+    name = models.CharField(max_length=255)  # Имя судьи
+    position = models.CharField(max_length=255)  # Должность
+    avatar = models.URLField(max_length=500, blank=True, null=True)  # URL аватара
 
     def __str__(self):
-        return f"Участники для {self.hackathon.title}"
+        return f"{self.name} ({self.position})"
 
+
+# Модель События в расписании
+class HackathonScheduleEvent(models.Model):
+    hackathon = models.ForeignKey(Hackathon, on_delete=models.CASCADE, related_name='schedule')
+    time = models.DateTimeField()  # Время события
+    title = models.CharField(max_length=255)  # Название события
+    description = models.TextField()  # Описание события
+
+    def __str__(self):
+        return f"{self.title} at {self.time}"
+
+
+# Модель Правил Хакатона (переименована из Rule)
+class HackathonRules(models.Model):
+    hackathon = models.ForeignKey(Hackathon, on_delete=models.CASCADE, related_name='rules')
+    text = models.TextField()  # Текст правила
+
+    def __str__(self):
+        return self.text
+
+
+# Модель Участника
+class Participant(models.Model):
+    hackathon = models.ForeignKey(Hackathon, on_delete=models.CASCADE, related_name='participants')
+    name = models.CharField(max_length=255)  # Имя участника
+    role = models.CharField(max_length=100)  # Роль (например, разработчик)
+    stack = models.JSONField(default=list)  # Технологический стек (список строк)
+    team = models.ForeignKey('Team', on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
+
+    def __str__(self):
+        return self.name
+
+
+# Модель Команды
+class Team(models.Model):
+    STATUS_CHOICES = (
+        ('open', 'Открыта'),
+        ('closed', 'Закрыта'),
+    )
+
+    hackathon = models.ForeignKey(Hackathon, on_delete=models.CASCADE, related_name='teams')
+    name = models.CharField(max_length=255, unique=True)  # Название команды
+    stack = models.JSONField(default=list)  # Технологический стек команды
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    max_members = models.PositiveIntegerField(default=5)  # Максимальное количество участников
+    invite_code = models.CharField(max_length=10, unique=True, blank=True)  # Код для приглашения
+
+    def save(self, *args, **kwargs):
+        """Генерация уникального invite_code при создании команды."""
+        if not self.invite_code:
+            self.invite_code = self.generate_invite_code()
+        super().save(*args, **kwargs)
+
+    def generate_invite_code(self):
+        """Генерация уникального кода команды."""
+        while True:
+            code = 'TEAM' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            if not Team.objects.filter(invite_code=code).exists():
+                return code
+
+    def is_full(self):
+        """Проверка, заполнена ли команда."""
+        return self.members.count() >= self.max_members
+
+    def __str__(self):
+        return self.name
+
+
+# Модель Трека
+class Track(models.Model):
+    hackathon = models.ForeignKey(Hackathon, on_delete=models.CASCADE, related_name='tracks')
+    title = models.CharField(max_length=255)  # Название трека
+    description = models.TextField()  # Описание трека
+    teams = models.ManyToManyField(Team, related_name='tracks', blank=True)  # Связь с командами
+
+    def participants_count(self):
+        """Подсчёт количества участников в треке."""
+        return Participant.objects.filter(team__tracks=self).count()
+
+    def teams_count(self):
+        """Подсчёт количества команд в треке."""
+        return self.teams.count()
+
+    def __str__(self):
+        return self.title
 
